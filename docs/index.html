@@ -571,6 +571,8 @@
       border: 1px solid rgba(255,255,255,0.08);
       overflow: hidden;
       box-shadow: 0 20px 80px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
     }
 
 
@@ -775,26 +777,534 @@
       color: #fff;
     }
 
-    /* Fake desktop content behind the notch */
+    /* Fake desktop: Google Meet style */
     .screen-desktop {
       flex: 1;
-      padding: 20px 24px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      background: #202124;
+      position: relative;
     }
 
-    .screen-desktop .fake-line {
+    .meet-grid {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      padding: 28px 8px 8px;
+    }
+
+    .meet-tile {
+      background: #2d2e30;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .meet-tile .silhouette {
+      width: 50%;
+      height: 70%;
+      opacity: 0.25;
+    }
+
+    .meet-tile .silhouette circle { fill: rgba(255,255,255,0.6); }
+    .meet-tile .silhouette ellipse { fill: rgba(255,255,255,0.4); }
+
+    .meet-tile.self-tile { background: #1a3a2a; }
+    .meet-tile.self-tile .silhouette circle { fill: rgba(100,255,150,0.5); }
+    .meet-tile.self-tile .silhouette ellipse { fill: rgba(100,255,150,0.3); }
+
+    .meet-tile .tile-name {
+      position: absolute;
+      bottom: 4px;
+      left: 6px;
+      font-size: 7px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.5);
+      font-family: -apple-system, sans-serif;
+    }
+
+    .meet-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 6px 0;
+      flex-shrink: 0;
+    }
+
+    .meet-bar-btn {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .meet-bar-btn svg {
+      width: 10px;
       height: 10px;
-      border-radius: 5px;
-      background: rgba(255,255,255,0.04);
+      stroke: rgba(255,255,255,0.6);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
     }
 
-    .screen-desktop .fake-line:nth-child(1) { width: 80%; }
-    .screen-desktop .fake-line:nth-child(2) { width: 65%; }
-    .screen-desktop .fake-line:nth-child(3) { width: 90%; }
-    .screen-desktop .fake-line:nth-child(4) { width: 50%; }
-    .screen-desktop .fake-line:nth-child(5) { width: 75%; }
+    .meet-bar-btn.mic-on { background: #3c4043; }
+    .meet-bar-btn.cam-on { background: #3c4043; }
+    .meet-bar-btn.end-call { background: #ea4335; }
+
+    /* Scene switching */
+    .screen-desktop .scene {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+      pointer-events: none;
+    }
+
+    .screen-desktop .scene.active { opacity: 1; pointer-events: auto; }
+
+    /* Scene: Presentation (Meet screen-share) */
+    .scene-presentation {
+      background: #202124;
+      padding: 0;
+    }
+
+    .pres-layout {
+      position: absolute;
+      inset: 24px 0 28px 0;
+      display: flex;
+      gap: 4px;
+      padding: 0 6px;
+    }
+
+    /* Large shared screen area */
+    .pres-shared {
+      flex: 1;
+      background: #fff;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      padding: 10px 14px;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    .pres-shared-title {
+      width: 50%;
+      height: 7px;
+      border-radius: 3px;
+      background: #222;
+      opacity: 0.15;
+    }
+
+    .pres-shared-sub {
+      width: 30%;
+      height: 5px;
+      border-radius: 2px;
+      background: #4f8bff;
+      opacity: 0.2;
+      margin-bottom: 4px;
+    }
+
+    .pres-shared-lines {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .pres-shared-lines div {
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(0,0,0,0.06);
+    }
+
+    .pres-shared-lines div:nth-child(1) { width: 90%; }
+    .pres-shared-lines div:nth-child(2) { width: 70%; }
+    .pres-shared-lines div:nth-child(3) { width: 80%; }
+
+    .pres-shared-chart {
+      margin-top: auto;
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 36px;
+    }
+
+    .pres-shared-chart div {
+      flex: 1;
+      border-radius: 2px 2px 0 0;
+    }
+
+    .pres-shared-chart div:nth-child(1) { height: 35%; background: #4285f4; opacity: 0.5; }
+    .pres-shared-chart div:nth-child(2) { height: 60%; background: #4285f4; opacity: 0.6; }
+    .pres-shared-chart div:nth-child(3) { height: 90%; background: #4285f4; opacity: 0.8; }
+    .pres-shared-chart div:nth-child(4) { height: 50%; background: #4285f4; opacity: 0.55; }
+    .pres-shared-chart div:nth-child(5) { height: 75%; background: #4285f4; opacity: 0.7; }
+    .pres-shared-chart div:nth-child(6) { height: 45%; background: #4285f4; opacity: 0.5; }
+    .pres-shared-chart div:nth-child(7) { height: 85%; background: #34a853; opacity: 0.7; }
+
+    .pres-shared-pie {
+      position: absolute;
+      bottom: 38px;
+      right: 14px;
+      width: 28px;
+      height: 28px;
+    }
+
+    .pres-shared-pie circle { fill: none; stroke-width: 6; }
+
+    /* Small participant strip on right */
+    .pres-people {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      width: 56px;
+      flex-shrink: 0;
+    }
+
+    .pres-person {
+      flex: 1;
+      background: #2d2e30;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .pres-person svg {
+      width: 50%;
+      height: 60%;
+      opacity: 0.25;
+    }
+
+    .pres-person svg circle { fill: rgba(255,255,255,0.6); }
+    .pres-person svg ellipse { fill: rgba(255,255,255,0.4); }
+
+    .pres-person.speaking { border: 1px solid rgba(66,133,244,0.5); }
+
+    .pres-person .pp-name {
+      position: absolute;
+      bottom: 2px;
+      left: 4px;
+      font-size: 5px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* Meet bottom bar reused */
+    .pres-meet-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 4px 0;
+      background: #202124;
+    }
+
+    /* Scene: Recording / vertical video */
+    .scene-recording {
+      background: #1a1a1a;
+      justify-content: center;
+      align-items: center;
+      padding: 28px 0 8px;
+    }
+
+    .rec-viewfinder {
+      width: 55%;
+      flex: 1;
+      max-height: 85%;
+      background: #111;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .rec-viewfinder svg {
+      width: 40%;
+      height: 50%;
+      opacity: 0.2;
+    }
+
+    .rec-viewfinder svg circle { fill: rgba(255,255,255,0.5); }
+    .rec-viewfinder svg ellipse { fill: rgba(255,255,255,0.35); }
+
+    .rec-dot {
+      position: absolute;
+      top: 6px;
+      left: 8px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ff3b30;
+      box-shadow: 0 0 6px rgba(255, 59, 48, 0.6);
+      animation: recBlink 1.2s infinite;
+    }
+
+    @keyframes recBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .rec-time {
+      position: absolute;
+      top: 5px;
+      left: 18px;
+      font-size: 7px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.4);
+      font-family: 'SF Mono', monospace;
+    }
+
+    .rec-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 6px 0;
+      flex-shrink: 0;
+    }
+
+    .rec-btn {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .rec-btn .rec-inner {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff3b30;
+    }
+
+    /* Sidecar iPad demo */
+    .sidecar-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 640px;
+      margin: 12px auto 0;
+    }
+
+    .sidecar-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      position: absolute;
+      z-index: 21;
+    }
+
+    .sidecar-label.visible { opacity: 1; }
+
+    .sidecar-label span {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text2);
+    }
+
+    .sidecar-label .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #32d74b;
+      box-shadow: 0 0 6px rgba(50, 215, 75, 0.5);
+    }
+
+    #sidecarLabelIPad {
+      bottom: -50px;
+      right: -30px;
+    }
+
+    #sidecarLabelMac {
+      bottom: -24px;
+      left: 0;
+    }
+
+    .ipad-frame {
+      position: absolute;
+      bottom: -30px;
+      right: -30px;
+      width: 220px;
+      aspect-ratio: 4 / 3;
+      background: linear-gradient(180deg, #111113 0%, #0a0a0c 100%);
+      border-radius: 14px;
+      border: 2px solid rgba(255,255,255,0.12);
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+      opacity: 0;
+      transform: translateY(-10px) scale(0.95);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+      z-index: 20;
+    }
+
+    .ipad-frame.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .ipad-frame .home-bar {
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 48px;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.2);
+      z-index: 5;
+    }
+
+    .ipad-prompter {
+      padding: 24px 16px 20px;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .ipad-prompter-words {
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 5px;
+      align-content: flex-start;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%);
+      mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%);
+    }
+
+    .ipad-prompter-words-inner {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 5px;
+      transition: transform 0.3s ease-out;
+    }
+
+    .ipad-prompter-words span {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,1);
+      transition: color 0.15s ease;
+    }
+
+    .ipad-prompter-words span.highlighted {
+      color: rgba(255,255,255,0.3);
+    }
+
+    .ipad-prompter-words span.current {
+      color: rgba(255,255,255,0.6);
+      text-decoration: underline;
+    }
+
+    .ipad-prompter-words span.annotation {
+      font-style: italic;
+      color: rgba(255,255,255,0.15);
+    }
+
+    .ipad-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-top: 8px;
+      flex-shrink: 0;
+    }
+
+    .ipad-toolbar .bar {
+      width: 2px;
+      height: 4px;
+      border-radius: 1px;
+      background: rgba(255,214,10,0.6);
+    }
+
+    .ipad-toolbar .ipad-mic {
+      width: 10px;
+      height: 10px;
+      margin-left: auto;
+    }
+
+    .ipad-done {
+      display: none;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .ipad-done svg { width: 20px; height: 20px; }
+    .ipad-done span { font-size: 11px; font-weight: 700; color: #fff; }
+
+    /* Floating notch mode */
+    .demo-notch.floating {
+      position: absolute;
+      left: auto;
+      transform: none;
+      transition: top 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+                  left 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+                  right 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .demo-mode-label {
+      position: absolute;
+      bottom: -28px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent2);
+      background: rgba(79, 139, 255, 0.1);
+      border: 1px solid rgba(79, 139, 255, 0.15);
+      padding: 3px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .demo-mode-label.visible { opacity: 1; }
+
+    /* Mirror mode label */
+    .mirror-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--accent2);
+      background: rgba(79, 139, 255, 0.15);
+      border: 1px solid rgba(79, 139, 255, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      z-index: 5;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .ipad-frame.mirror .mirror-badge { opacity: 1; }
+
+    .ipad-frame.mirror .ipad-prompter-words-inner {
+      transform-origin: center;
+    }
 
     /* Responsive */
     @media (max-width: 600px) {
@@ -802,6 +1312,8 @@
       .hero .subtitle { font-size: 16px; }
       .icon-showcase svg { width: 120px; height: 120px; }
       .features h2, .how-it-works h2, .use-case-section h2 { font-size: 26px; }
+      .ipad-frame { width: 160px; bottom: -20px; right: -10px; }
+      #sidecarLabelIPad { bottom: -40px; right: -10px; }
     }
   </style>
 </head>
@@ -858,38 +1370,133 @@
 
     <!-- Animated Demo -->
     <section class="demo">
-      <div class="screen-frame">
-        <div class="demo-camera">
-          <div class="lens"></div>
-          <div class="green-dot"></div>
-        </div>
-        <div class="demo-notch" id="demoNotch">
-          <svg class="notch-shape" id="notchSvg" preserveAspectRatio="none"><path id="notchPath" fill="#000"/></svg>
-          <div class="demo-notch-content">
-            <div class="demo-words" id="demoWords"></div>
-            <div class="demo-done" id="demoDone">
+      <div class="sidecar-wrapper">
+        <div class="ipad-frame" id="ipadFrame">
+          <div class="mirror-badge">MIRROR</div>
+          <div class="home-bar"></div>
+          <div class="ipad-prompter">
+            <div class="ipad-prompter-words" id="ipadWords"></div>
+            <div class="ipad-done" id="ipadDone">
               <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#34C759" stroke-width="2"/><polyline points="22 4 12 14.01 9 11.01" fill="none" stroke="#34C759" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <span>Done!</span>
             </div>
-            <div class="demo-toolbar" id="demoToolbar">
-              <div class="demo-waveform" id="demoWaveform"></div>
-              <div class="demo-spoken" id="demoSpoken"></div>
-              <div class="demo-btn mic" title="Mic">
-                <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2" fill="none" stroke="#ffd60a" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="19" x2="12" y2="23" stroke="#ffd60a" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="23" x2="16" y2="23" stroke="#ffd60a" stroke-width="2" stroke-linecap="round"/></svg>
-              </div>
-              <div class="demo-btn close" title="Close">
-                <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </div>
+            <div class="ipad-toolbar" id="ipadToolbar">
+              <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+              <svg class="ipad-mic" viewBox="0 0 24 24" fill="#ffd60a"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg>
             </div>
           </div>
         </div>
-        <div class="screen-desktop">
-          <div class="fake-line"></div>
-          <div class="fake-line"></div>
-          <div class="fake-line"></div>
-          <div class="fake-line"></div>
-          <div class="fake-line"></div>
+        <div class="sidecar-label" id="sidecarLabelIPad"><div class="dot"></div><span>iPad · Sidecar</span></div>
+        <div class="screen-frame">
+          <div class="demo-camera">
+            <div class="lens"></div>
+            <div class="green-dot"></div>
+          </div>
+          <div class="demo-notch" id="demoNotch">
+            <svg class="notch-shape" id="notchSvg" preserveAspectRatio="none"><path id="notchPath" fill="#000"/></svg>
+            <div class="demo-notch-content">
+              <div class="demo-words" id="demoWords"></div>
+              <div class="demo-done" id="demoDone">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="#34C759" stroke-width="2"/><polyline points="22 4 12 14.01 9 11.01" fill="none" stroke="#34C759" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <span>Done!</span>
+              </div>
+              <div class="demo-toolbar" id="demoToolbar">
+                <div class="demo-waveform" id="demoWaveform"></div>
+                <div class="demo-spoken" id="demoSpoken"></div>
+                <div class="demo-btn mic" title="Mic">
+                  <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2" fill="none" stroke="#ffd60a" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="19" x2="12" y2="23" stroke="#ffd60a" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="23" x2="16" y2="23" stroke="#ffd60a" stroke-width="2" stroke-linecap="round"/></svg>
+                </div>
+                <div class="demo-btn close" title="Close">
+                  <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="screen-desktop" id="screenDesktop">
+            <!-- Scene: Meeting -->
+            <div class="scene scene-meeting active" id="sceneMeeting">
+              <div class="meet-grid">
+                <div class="meet-tile self-tile">
+                  <svg class="silhouette" viewBox="0 0 80 80"><circle cx="40" cy="28" r="14"/><ellipse cx="40" cy="72" rx="24" ry="18"/></svg>
+                  <span class="tile-name">You</span>
+                </div>
+                <div class="meet-tile">
+                  <svg class="silhouette" viewBox="0 0 80 80"><circle cx="40" cy="28" r="14"/><ellipse cx="40" cy="72" rx="24" ry="18"/></svg>
+                  <span class="tile-name">Alex</span>
+                </div>
+                <div class="meet-tile">
+                  <svg class="silhouette" viewBox="0 0 80 80"><circle cx="40" cy="28" r="14"/><ellipse cx="40" cy="72" rx="24" ry="18"/></svg>
+                  <span class="tile-name">Jordan</span>
+                </div>
+                <div class="meet-tile">
+                  <svg class="silhouette" viewBox="0 0 80 80"><circle cx="40" cy="28" r="14"/><ellipse cx="40" cy="72" rx="24" ry="18"/></svg>
+                  <span class="tile-name">Sam</span>
+                </div>
+              </div>
+              <div class="meet-bar">
+                <div class="meet-bar-btn mic-on"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div>
+                <div class="meet-bar-btn cam-on"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+                <div class="meet-bar-btn end-call"><svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 4 .64 2 2 0 0 1 2 2v3.28a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 3.59 2.18 2 2 0 0 1 5.57.09H8.9a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11z" stroke="white" fill="none"/></svg></div>
+              </div>
+            </div>
+            <!-- Scene: Presentation (Meet screen share) -->
+            <div class="scene scene-presentation" id="scenePresentation">
+              <div class="pres-layout">
+                <div class="pres-shared">
+                  <div class="pres-shared-title"></div>
+                  <div class="pres-shared-sub"></div>
+                  <div class="pres-shared-lines">
+                    <div></div><div></div><div></div>
+                  </div>
+                  <div class="pres-shared-chart">
+                    <div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+                  </div>
+                  <svg class="pres-shared-pie" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="14" stroke="#4285f4" stroke-dasharray="40 88" stroke-dashoffset="25" opacity="0.6"/>
+                    <circle cx="18" cy="18" r="14" stroke="#34a853" stroke-dasharray="28 88" stroke-dashoffset="-15" opacity="0.5"/>
+                    <circle cx="18" cy="18" r="14" stroke="#fbbc04" stroke-dasharray="20 88" stroke-dashoffset="-43" opacity="0.5"/>
+                  </svg>
+                </div>
+                <div class="pres-people">
+                  <div class="pres-person speaking">
+                    <svg viewBox="0 0 80 80"><circle cx="40" cy="28" r="14"/><ellipse cx="40" cy="72" rx="24" ry="18"/></svg>
+                    <span class="pp-name">You</span>
+                  </div>
+                  <div class="pres-person">
+                    <svg viewBox="0 0 80 80"><circle cx="40" cy="28" r="14"/><ellipse cx="40" cy="72" rx="24" ry="18"/></svg>
+                    <span class="pp-name">Alex</span>
+                  </div>
+                  <div class="pres-person">
+                    <svg viewBox="0 0 80 80"><circle cx="40" cy="28" r="14"/><ellipse cx="40" cy="72" rx="24" ry="18"/></svg>
+                    <span class="pp-name">Jordan</span>
+                  </div>
+                  <div class="pres-person">
+                    <svg viewBox="0 0 80 80"><circle cx="40" cy="28" r="14"/><ellipse cx="40" cy="72" rx="24" ry="18"/></svg>
+                    <span class="pp-name">Sam</span>
+                  </div>
+                </div>
+              </div>
+              <div class="pres-meet-bar">
+                <div class="meet-bar-btn mic-on"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></div>
+                <div class="meet-bar-btn cam-on"><svg viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+                <div class="meet-bar-btn end-call"><svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 4 .64 2 2 0 0 1 2 2v3.28a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 3.59 2.18 2 2 0 0 1 5.57.09H8.9a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11z" stroke="white" fill="none"/></svg></div>
+              </div>
+            </div>
+            <!-- Scene: Recording -->
+            <div class="scene scene-recording" id="sceneRecording">
+              <div class="rec-viewfinder">
+                <svg viewBox="0 0 80 80"><circle cx="40" cy="28" r="14"/><ellipse cx="40" cy="72" rx="24" ry="18"/></svg>
+                <div class="rec-dot"></div>
+                <div class="rec-time">02:34</div>
+              </div>
+              <div class="rec-bar">
+                <div class="rec-btn"><div class="rec-inner"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="demo-mode-label" id="demoModeLabel"></div>
         </div>
+        <div class="sidecar-label" id="sidecarLabelMac"><span>MacBook</span></div>
       </div>
     </section>
 
@@ -909,30 +1516,53 @@
       const spokenEl = document.getElementById('demoSpoken');
       const doneEl = document.getElementById('demoDone');
       const toolbarEl = document.getElementById('demoToolbar');
-      let waveInterval, animFrame;
+      const ipadFrame = document.getElementById('ipadFrame');
+      const ipadWordsEl = document.getElementById('ipadWords');
+      const ipadDoneEl = document.getElementById('ipadDone');
+      const ipadToolbarEl = document.getElementById('ipadToolbar');
+      const labelMac = document.getElementById('sidecarLabelMac');
+      const labelIPad = document.getElementById('sidecarLabelIPad');
+      const modeLabel = document.getElementById('demoModeLabel');
+      const scenes = [
+        document.getElementById('sceneMeeting'),
+        document.getElementById('scenePresentation'),
+        document.getElementById('sceneRecording'),
+      ];
+      let waveInterval, animFrame, cycleCount = 0;
 
-      // DynamicIslandShape path matching the Swift code
+      function showScene(index) {
+        scenes.forEach(s => s.classList.remove('active'));
+        scenes[index % scenes.length].classList.add('active');
+      }
+
+      // Notch shape: concave top corners (pinned)
       function notchShapePath(w, h, t, br) {
         return `M 0,0 Q ${t},0 ${t},${t} L ${t},${h - br} Q ${t},${h} ${t + br},${h} L ${w - t - br},${h} Q ${w - t},${h} ${w - t},${h - br} L ${w - t},${t} Q ${w - t},0 ${w},0 Z`;
       }
 
-      // Smooth interpolation
+      // Rounded rect shape (floating)
+      function roundedRectPath(w, h, r) {
+        return `M ${r},0 L ${w - r},0 Q ${w},0 ${w},${r} L ${w},${h - r} Q ${w},${h} ${w - r},${h} L ${r},${h} Q 0,${h} 0,${h - r} L 0,${r} Q 0,0 ${r},0 Z`;
+      }
+
       function lerp(a, b, t) { return a + (b - a) * t; }
 
-      // Collapsed: small notch pill
       const collW = 120, collH = 24, collT = 6, collBR = 8;
-      // Expanded: full overlay
       const expW = 340, expH = 155, expT = 14, expBR = 16;
 
       let current = { w: collW, h: collH, t: collT, br: collBR };
       let target = { ...current };
-      let animating = false;
+      let isFloating = false;
 
       function updateNotch() {
         notch.style.width = current.w + 'px';
         notch.style.height = current.h + 'px';
         notchSvg.setAttribute('viewBox', `0 0 ${current.w} ${current.h}`);
-        notchPath.setAttribute('d', notchShapePath(current.w, current.h, current.t, current.br));
+        if (isFloating) {
+          notchPath.setAttribute('d', roundedRectPath(current.w, current.h, current.br));
+        } else {
+          notchPath.setAttribute('d', notchShapePath(current.w, current.h, current.t, current.br));
+        }
       }
 
       function animateTo(tgt, duration, cb) {
@@ -953,13 +1583,12 @@
         animFrame = requestAnimationFrame(step);
       }
 
-      let wordsInner;
+      let wordsInner, ipadWordsInner;
 
       function isAnnotation(word) {
         return word.startsWith('[') && word.endsWith(']');
       }
 
-      // Group bracket annotations like [look at camera] into single tokens
       function parseWords(raw) {
         const result = [];
         let i = 0;
@@ -994,12 +1623,35 @@
         wordsEl.appendChild(wordsInner);
       }
 
+      function buildIPadWords(isMirror) {
+        ipadWordsEl.innerHTML = '';
+        ipadWordsInner = document.createElement('div');
+        ipadWordsInner.className = 'ipad-prompter-words-inner';
+        if (isMirror) ipadWordsInner.style.transform = 'scaleY(-1)';
+        parsed.forEach(w => {
+          const s = document.createElement('span');
+          s.textContent = w;
+          if (isAnnotation(w)) s.classList.add('annotation');
+          ipadWordsInner.appendChild(s);
+        });
+        ipadWordsEl.appendChild(ipadWordsInner);
+      }
+
       function scrollToWord(span) {
         const containerH = wordsEl.clientHeight;
         const spanOffsetTop = span.offsetTop;
         const spanH = span.offsetHeight;
         const offset = spanOffsetTop + spanH / 2 - containerH / 2;
         wordsInner.style.transform = `translateY(-${offset}px)`;
+      }
+
+      function scrollIPadToWord(span, isMirror) {
+        const containerH = ipadWordsEl.clientHeight;
+        const spanOffsetTop = span.offsetTop;
+        const spanH = span.offsetHeight;
+        const offset = spanOffsetTop + spanH / 2 - containerH / 2;
+        const scaleY = isMirror ? ' scaleY(-1)' : '';
+        ipadWordsInner.style.transform = `translateY(-${offset}px)${scaleY}`;
       }
 
       const totalBars = 30;
@@ -1020,70 +1672,170 @@
         const bars = waveEl.querySelectorAll('.bar');
         bars.forEach((bar, i) => {
           const barP = i / (totalBars - 1);
-          if (barP <= progress) {
-            bar.classList.add('lit');
-          } else {
-            bar.classList.remove('lit');
-          }
+          if (barP <= progress) { bar.classList.add('lit'); }
+          else { bar.classList.remove('lit'); }
         });
       }
 
       function animateWaveform() {
         const bars = waveEl.querySelectorAll('.bar');
+        const ipadBars = ipadToolbarEl.querySelectorAll('.bar');
         waveInterval = setInterval(() => {
-          bars.forEach(bar => {
-            bar.style.height = Math.max(3, Math.random() * 14) + 'px';
-          });
+          bars.forEach(bar => { bar.style.height = Math.max(3, Math.random() * 14) + 'px'; });
+          ipadBars.forEach(bar => { bar.style.height = Math.max(2, Math.random() * 8) + 'px'; });
         }, 100);
       }
 
       function stopWaveform() {
         clearInterval(waveInterval);
-        waveEl.querySelectorAll('.bar').forEach(bar => {
-          bar.style.height = '4px';
-          bar.classList.remove('lit');
-        });
+        waveEl.querySelectorAll('.bar').forEach(bar => { bar.style.height = '4px'; bar.classList.remove('lit'); });
+        ipadToolbarEl.querySelectorAll('.bar').forEach(bar => { bar.style.height = '4px'; });
+      }
+
+      // Floating mode: move notch to a position within the screen
+      function moveNotchTo(top, left) {
+        notch.style.top = top;
+        notch.style.left = left;
+        notch.style.right = 'auto';
+      }
+
+      function resetNotchPosition() {
+        notch.style.top = '0';
+        notch.style.left = '50%';
+        notch.style.right = '';
+        notch.style.transform = 'translateX(-50%)';
+        notch.classList.remove('floating');
+        isFloating = false;
+      }
+
+      function setModeLabel(text) {
+        modeLabel.textContent = text;
+        modeLabel.classList.add('visible');
+      }
+
+      function hideModeLabel() {
+        modeLabel.classList.remove('visible');
+      }
+
+      // Floating positions: the notch drifts to these spots
+      const floatPositions = [
+        { top: '60px', left: '20px' },
+        { top: '120px', left: '280px' },
+        { top: '40px', left: '160px' },
+        { top: '160px', left: '60px' },
+        { top: '80px', left: '380px' },
+      ];
+
+      // Split words into 2 segments: sidecar, then floating
+      const segMid = Math.floor(parsed.length / 2);
+      const WORD_MS = 350;
+      const TRANSITION_MS = 800;
+
+      // Scene pairs: [sidecar scene, floating scene]
+      const scenePairs = [[0, 1], [1, 2], [2, 0]];
+
+      function enterFloatingMode() {
+        isFloating = true;
+        notch.classList.add('floating');
+        notch.style.transform = 'none';
+        moveNotchTo(floatPositions[0].top, floatPositions[0].left);
+        updateNotch();
+        setModeLabel('Floating Window');
+        ipadFrame.classList.remove('visible');
+        labelIPad.classList.remove('visible');
+        // Switch background scene
+        const pair = scenePairs[cycleCount % scenePairs.length];
+        showScene(pair[1]);
       }
 
       function runCycle() {
         buildWords();
+        buildIPadWords(false);
         buildWaveform();
+
+        // Show first scene of the pair
+        const pair = scenePairs[cycleCount % scenePairs.length];
+        showScene(pair[0]);
+
+        // Reset everything
         doneEl.style.display = 'none';
         wordsEl.style.display = 'flex';
         toolbarEl.style.display = 'flex';
         spokenEl.textContent = '';
-        notch.classList.remove('expanded');
+        notch.classList.remove('expanded', 'floating');
+        isFloating = false;
+        resetNotchPosition();
         current = { w: collW, h: collH, t: collT, br: collBR };
         updateNotch();
+        ipadFrame.classList.remove('visible');
+        ipadDoneEl.style.display = 'none';
+        ipadWordsEl.style.display = 'flex';
+        ipadToolbarEl.style.display = 'flex';
+        labelMac.classList.remove('visible');
+        labelIPad.classList.remove('visible');
+        hideModeLabel();
 
-        // Phase 1: Expand
+        // Phase 1: Expand notch (sidecar mode)
         setTimeout(() => {
           notch.classList.add('expanded');
           animateTo({ w: expW, h: expH, t: expT, br: expBR }, 500);
+          labelMac.classList.add('visible');
+          ipadFrame.classList.add('visible');
+          labelIPad.classList.add('visible');
+          setModeLabel('Sidecar');
         }, 600);
 
-        // Phase 2: Highlight words
+        // Phase 2: Highlight words, switch to floating at midpoint
         setTimeout(() => {
           animateWaveform();
           let spokenWords = [];
           const spans = wordsInner.querySelectorAll('span');
+          let floatStep = 1;
+
           spans.forEach((span, i) => {
+            const baseTime = i * WORD_MS + (i >= segMid ? TRANSITION_MS : 0);
+
             setTimeout(() => {
+              // Switch to floating at midpoint
+              if (i === segMid) enterFloatingMode();
+
+              // Highlight word
               if (i > 0) {
                 spans[i - 1].classList.remove('current');
                 spans[i - 1].classList.add('highlighted');
               }
               span.classList.add('current');
               scrollToWord(span);
+
+              // iPad sync (sidecar segment only)
+              if (i < segMid) {
+                const ipadSpans = ipadWordsInner.querySelectorAll('span');
+                if (i > 0 && ipadSpans[i - 1]) {
+                  ipadSpans[i - 1].classList.remove('current');
+                  ipadSpans[i - 1].classList.add('highlighted');
+                }
+                if (ipadSpans[i]) {
+                  ipadSpans[i].classList.add('current');
+                  scrollIPadToWord(ipadSpans[i], false);
+                }
+              }
+
               if (!isAnnotation(parsed[i])) {
                 spokenWords.push(parsed[i]);
                 spokenEl.textContent = spokenWords.slice(-4).join(' ');
               }
               updateWaveformProgress((i + 1) / parsed.length);
-            }, i * 400);
+
+              // Floating: drift every 4 words
+              if (i >= segMid && (i - segMid) % 4 === 0 && i !== segMid) {
+                const pos = floatPositions[floatStep % floatPositions.length];
+                moveNotchTo(pos.top, pos.left);
+                floatStep++;
+              }
+            }, baseTime);
           });
 
-          const doneDelay = parsed.length * 400 + 500;
+          const totalTime = parsed.length * WORD_MS + TRANSITION_MS + 500;
 
           // Phase 3: Done
           setTimeout(() => {
@@ -1091,17 +1843,23 @@
             wordsEl.style.display = 'none';
             toolbarEl.style.display = 'none';
             doneEl.style.display = 'flex';
-          }, doneDelay);
+          }, totalTime);
 
           // Phase 4: Collapse
           setTimeout(() => {
             doneEl.style.display = 'none';
-            notch.classList.remove('expanded');
+            notch.classList.remove('expanded', 'floating');
+            isFloating = false;
+            resetNotchPosition();
             animateTo({ w: collW, h: collH, t: collT, br: collBR }, 400);
-          }, doneDelay + 1200);
+            ipadFrame.classList.remove('visible');
+            labelMac.classList.remove('visible');
+            labelIPad.classList.remove('visible');
+            hideModeLabel();
+          }, totalTime + 1200);
 
           // Phase 5: Loop
-          setTimeout(() => { runCycle(); }, doneDelay + 2400);
+          setTimeout(() => runCycle(), totalTime + 2400);
         }, 1300);
       }
 
