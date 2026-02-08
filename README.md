@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="Textream/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" height="128" alt="Textream icon">
+  <img src="Textream/Textream/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="128" height="128" alt="Textream icon">
 </p>
 
 <h1 align="center">Textream</h1>
