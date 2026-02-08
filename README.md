@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <video src="https://github.com/f/textream/raw/main/docs/video.mp4" width="600" autoplay loop muted playsinline></video>
+  <img src="docs/video.gif" width="600" alt="Textream demo">
 </p>
 
 ---
