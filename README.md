@@ -62,9 +62,11 @@ Then right-click the app → **Open**. After the first launch, macOS remembers y
 ### Display
 
 - **Dynamic Island overlay** — A notch-shaped overlay at the top of your screen, inspired by the MacBook Dynamic Island. Sits above all apps.
+- **Notch display selection** — Choose "Follow Mouse" to move the notch to whichever display your cursor is on, or "Fixed Display" to pin it to a specific screen.
 - **Floating window mode** — Switch from the pinned notch to a draggable floating window you can place anywhere on screen.
 - **Glass effect** — Enable a translucent frosted glass background for the floating window with adjustable opacity.
-- **External display / Sidecar** — Show a fullscreen teleprompter on an external display or Sidecar iPad. Includes a mirror mode for use with prompter mirror rigs.
+- **External display / Sidecar** — Show a fullscreen teleprompter on an external display or Sidecar iPad.
+- **Configurable mirror mode** — Flip the external display horizontally, vertically, or both for prompter mirror rigs.
 - **Adjustable size** — Resize the overlay width and text height from Settings (⌘,) to fit your screen.
 
 ### Customization
@@ -81,6 +83,7 @@ Then right-click the app → **Open**. After the first launch, macOS remembers y
 - **Tap to jump** — Tap any word in the overlay to jump the tracker to that position.
 - **Pause & resume** — Go off-script, take a break, come back. The tracker picks up where you left off.
 - **Completely private** — All processing happens on-device. No accounts, no tracking, no data leaves your Mac.
+- **Auto update checker** — Checks GitHub Releases for new versions on launch and from the Textream menu.
 - **Open source** — MIT licensed. Contributions welcome.
 
 ## Who it's for
@@ -132,6 +135,7 @@ Textream/
     ├── NotchSettings.swift            # User preferences and presets
     ├── SettingsView.swift             # Tabbed settings UI
     ├── MarqueeTextView.swift          # Word flow layout and highlighting
+    ├── UpdateChecker.swift            # GitHub release update checker
     └── Assets.xcassets/               # App icon and colors
 ```
 
