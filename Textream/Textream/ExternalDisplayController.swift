@@ -35,14 +35,14 @@ class ExternalDisplayController {
 
         dismiss()
 
-        let isMirrored = settings.externalDisplayMode == .mirror
+        let mirrorAxis = settings.externalDisplayMode == .mirror ? settings.mirrorAxis : nil
         let screenFrame = screen.frame
 
         let content = ExternalDisplayView(
             words: words,
             totalCharCount: totalCharCount,
             speechRecognizer: speechRecognizer,
-            isMirrored: isMirrored
+            mirrorAxis: mirrorAxis
         )
 
         let hostingView = NSHostingView(rootView: content)
@@ -104,7 +104,7 @@ struct ExternalDisplayView: View {
     let words: [String]
     let totalCharCount: Int
     @Bindable var speechRecognizer: SpeechRecognizer
-    let isMirrored: Bool
+    let mirrorAxis: MirrorAxis?
 
     // Timer-based scroll for classic & silence-paused modes
     @State private var timerWordProgress: Double = 0
@@ -175,7 +175,7 @@ struct ExternalDisplayView: View {
                 prompterView
             }
         }
-        .scaleEffect(x: isMirrored ? -1 : 1, y: 1)
+        .scaleEffect(x: mirrorAxis?.scaleX ?? 1, y: mirrorAxis?.scaleY ?? 1)
         .animation(.easeInOut(duration: 0.5), value: isDone)
         .onReceive(scrollTimer) { _ in
             guard !isDone, !isUserScrolling else { return }

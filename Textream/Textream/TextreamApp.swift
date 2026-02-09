@@ -33,13 +33,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if TextreamService.shared.launchedExternally {
             TextreamService.shared.hideMainWindow()
         }
+
+        // Silent update check on launch
+        UpdateChecker.shared.checkForUpdates(silent: true)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if TextreamService.shared.launchedExternally {
             TextreamService.shared.launchedExternally = false
             NSApp.setActivationPolicy(.regular)
-            return true
+        }
+        if !flag {
+            // Show existing window instead of letting SwiftUI create a duplicate
+            for window in NSApp.windows where !(window is NSPanel) {
+                window.makeKeyAndOrderFront(nil)
+                return false
+            }
         }
         return true
     }
@@ -75,6 +84,10 @@ struct TextreamApp: App {
             CommandGroup(replacing: .appInfo) {
                 Button("About Textream") {
                     NotificationCenter.default.post(name: .openAbout, object: nil)
+                }
+                Divider()
+                Button("Check for Updates…") {
+                    UpdateChecker.shared.checkForUpdates()
                 }
             }
             CommandGroup(after: .appSettings) {

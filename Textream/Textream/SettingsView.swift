@@ -262,10 +262,13 @@ struct SettingsView: View {
                     settings.fontFamilyPreset = .sans
                     settings.fontColorPreset = .white
                     settings.overlayMode = .pinned
+                    settings.notchDisplayMode = .followMouse
+                    settings.pinnedScreenID = 0
                     settings.floatingGlassEffect = false
                     settings.glassOpacity = 0.15
                     settings.externalDisplayMode = .off
                     settings.externalScreenID = 0
+                    settings.mirrorAxis = .horizontal
                     settings.listeningMode = .wordTracking
                     settings.scrollSpeed = 3
                 }
@@ -585,6 +588,25 @@ struct SettingsView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
 
+            if settings.externalDisplayMode == .mirror {
+                Divider()
+
+                Text("Mirror Axis")
+                    .font(.system(size: 13, weight: .medium))
+
+                Picker("", selection: $settings.mirrorAxis) {
+                    ForEach(MirrorAxis.allCases) { axis in
+                        Text(axis.label).tag(axis)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+
+                Text(settings.mirrorAxis.description)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+
             if settings.externalDisplayMode != .off {
                 Divider()
 
@@ -670,6 +692,8 @@ struct SettingsView: View {
 
     // MARK: - Overlay Mode Tab
 
+    @State private var overlayScreens: [NSScreen] = []
+
     private var overlayModeTab: some View {
         VStack(alignment: .leading, spacing: 14) {
             Picker("", selection: $settings.overlayMode) {
@@ -683,6 +707,75 @@ struct SettingsView: View {
             Text(settings.overlayMode.description)
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
+
+            if settings.overlayMode == .pinned {
+                Divider()
+
+                Text("Display")
+                    .font(.system(size: 13, weight: .medium))
+
+                Picker("", selection: $settings.notchDisplayMode) {
+                    ForEach(NotchDisplayMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+
+                Text(settings.notchDisplayMode.description)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+
+                if settings.notchDisplayMode == .fixedDisplay {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(overlayScreens, id: \.displayID) { screen in
+                            Button {
+                                settings.pinnedScreenID = screen.displayID
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "display")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundStyle(settings.pinnedScreenID == screen.displayID ? Color.accentColor : .secondary)
+                                        .frame(width: 24)
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(screen.displayName)
+                                            .font(.system(size: 12, weight: .semibold))
+                                            .foregroundStyle(settings.pinnedScreenID == screen.displayID ? Color.accentColor : .primary)
+                                        Text("\(Int(screen.frame.width))×\(Int(screen.frame.height))")
+                                            .font(.system(size: 10))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    if settings.pinnedScreenID == screen.displayID {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundStyle(Color.accentColor)
+                                    }
+                                }
+                                .padding(10)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(settings.pinnedScreenID == screen.displayID ? Color.accentColor.opacity(0.1) : Color.primary.opacity(0.04))
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        Button {
+                            refreshOverlayScreens()
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 10, weight: .semibold))
+                                Text("Refresh")
+                                    .font(.system(size: 11, weight: .medium))
+                            }
+                            .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
 
             if settings.overlayMode == .floating {
                 Divider()
@@ -712,6 +805,14 @@ struct SettingsView: View {
                     }
                 }
             }
+        }
+        .onAppear { refreshOverlayScreens() }
+    }
+
+    private func refreshOverlayScreens() {
+        overlayScreens = NSScreen.screens
+        if settings.pinnedScreenID == 0, let main = NSScreen.main {
+            settings.pinnedScreenID = main.displayID
         }
     }
 }

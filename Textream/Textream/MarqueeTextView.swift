@@ -428,7 +428,7 @@ struct AudioWaveformProgressView: View {
                           ? Color.yellow.opacity(0.9)
                           : Color.white.opacity(0.15)
                     )
-                    .frame(width: 3, height: max(4, level * 60))
+                    .frame(width: 3, height: max(3, level * 28))
                     .animation(.easeOut(duration: 0.08), value: level)
             }
         }

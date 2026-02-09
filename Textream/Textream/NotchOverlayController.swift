@@ -20,6 +20,7 @@ class NotchFrameTracker {
     weak var panel: NSPanel?
     var screenMidX: CGFloat = 0
     var screenMaxY: CGFloat = 0
+    var menuBarHeight: CGFloat = 0
 
     func updatePanel() {
         guard let panel else { return }
@@ -35,6 +36,9 @@ class NotchOverlayController {
     var onComplete: (() -> Void)?
     private var cancellables = Set<AnyCancellable>()
     private var isDismissing = false
+    private var frameTracker: NotchFrameTracker?
+    private var mouseTrackingTimer: AnyCancellable?
+    private var currentScreenID: UInt32 = 0
 
     func show(text: String, onComplete: (() -> Void)? = nil) {
         self.onComplete = onComplete
@@ -42,9 +46,15 @@ class NotchOverlayController {
         forceClose()
         observeDismiss()
 
-        guard let screen = NSScreen.main else { return }
-
         let settings = NotchSettings.shared
+
+        let screen: NSScreen
+        switch settings.notchDisplayMode {
+        case .followMouse:
+            screen = screenUnderMouse() ?? NSScreen.main ?? NSScreen.screens[0]
+        case .fixedDisplay:
+            screen = NSScreen.screens.first(where: { $0.displayID == settings.pinnedScreenID }) ?? NSScreen.main ?? NSScreen.screens[0]
+        }
 
         // Normalize newlines to spaces, then split
         let normalized = text.replacingOccurrences(of: "\n", with: " ")
@@ -68,6 +78,46 @@ class NotchOverlayController {
         }
     }
 
+    private func screenUnderMouse() -> NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) })
+    }
+
+    private func startMouseTracking() {
+        mouseTrackingTimer?.cancel()
+        mouseTrackingTimer = Timer.publish(every: 0.3, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                self?.checkMouseScreen()
+            }
+    }
+
+    private func stopMouseTracking() {
+        mouseTrackingTimer?.cancel()
+        mouseTrackingTimer = nil
+    }
+
+    private func checkMouseScreen() {
+        guard let panel, let frameTracker else { return }
+        guard let mouseScreen = screenUnderMouse() else { return }
+        let mouseScreenID = mouseScreen.displayID
+        guard mouseScreenID != currentScreenID else { return }
+
+        // Mouse moved to a different screen — reposition the notch
+        // Keep the same panel dimensions since the SwiftUI view's menuBarHeight is fixed
+        currentScreenID = mouseScreenID
+        let screenFrame = mouseScreen.frame
+
+        frameTracker.screenMidX = screenFrame.midX
+        frameTracker.screenMaxY = screenFrame.maxY
+
+        let w = frameTracker.visibleWidth
+        let h = frameTracker.visibleHeight
+        let x = screenFrame.midX - w / 2
+        let y = screenFrame.maxY - h
+        panel.setFrame(NSRect(x: x, y: y, width: w, height: h), display: true)
+    }
+
     private func showPinned(words: [String], totalCharCount: Int, settings: NotchSettings, screen: NSScreen) {
         let notchWidth = settings.notchWidth
         let textAreaHeight = settings.textAreaHeight
@@ -78,11 +128,17 @@ class NotchOverlayController {
         // Menu bar / notch height from top of screen
         let menuBarHeight = screenFrame.maxY - visibleFrame.maxY
 
-        let frameTracker = NotchFrameTracker()
-        frameTracker.screenMidX = screenFrame.midX
-        frameTracker.screenMaxY = screenFrame.maxY
+        let tracker = NotchFrameTracker()
+        tracker.screenMidX = screenFrame.midX
+        tracker.screenMaxY = screenFrame.maxY
+        tracker.menuBarHeight = menuBarHeight
+        // Set full expanded dimensions so mouse tracking uses the correct size
+        tracker.visibleWidth = notchWidth
+        tracker.visibleHeight = menuBarHeight + textAreaHeight
+        self.frameTracker = tracker
+        self.currentScreenID = screen.displayID
 
-        let overlayView = NotchOverlayView(words: words, totalCharCount: totalCharCount, speechRecognizer: speechRecognizer, menuBarHeight: menuBarHeight, baseTextHeight: textAreaHeight, maxExtraHeight: maxExtraHeight, frameTracker: frameTracker)
+        let overlayView = NotchOverlayView(words: words, totalCharCount: totalCharCount, speechRecognizer: speechRecognizer, menuBarHeight: menuBarHeight, baseTextHeight: textAreaHeight, maxExtraHeight: maxExtraHeight, frameTracker: tracker)
         let contentView = NSHostingView(rootView: overlayView)
 
         // Start panel at full target size (SwiftUI animates the notch shape inside)
@@ -95,7 +151,7 @@ class NotchOverlayController {
             backing: .buffered,
             defer: false
         )
-        frameTracker.panel = panel
+        tracker.panel = panel
 
         panel.isOpaque = false
         panel.backgroundColor = .clear
@@ -108,6 +164,11 @@ class NotchOverlayController {
 
         panel.orderFrontRegardless()
         self.panel = panel
+
+        // Start mouse tracking for follow-mouse mode
+        if settings.notchDisplayMode == .followMouse {
+            startMouseTracking()
+        }
     }
 
     private func showFloating(words: [String], totalCharCount: Int, settings: NotchSettings, screenFrame: CGRect) {
@@ -152,18 +213,22 @@ class NotchOverlayController {
 
         // Wait for animation, then remove panel
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            self?.stopMouseTracking()
             self?.panel?.orderOut(nil)
             self?.panel = nil
+            self?.frameTracker = nil
             self?.speechRecognizer.shouldDismiss = false
             self?.onComplete?()
         }
     }
 
     private func forceClose() {
+        stopMouseTracking()
         cancellables.removeAll()
         speechRecognizer.forceStop()
         panel?.orderOut(nil)
         panel = nil
+        frameTracker = nil
         speechRecognizer.shouldDismiss = false
     }
 
@@ -176,9 +241,11 @@ class NotchOverlayController {
                 self.isDismissing = true
                 // Wait for shrink animation, then cleanup
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    self.stopMouseTracking()
                     self.cancellables.removeAll()
                     self.panel?.orderOut(nil)
                     self.panel = nil
+                    self.frameTracker = nil
                     self.speechRecognizer.shouldDismiss = false
                     self.onComplete?()
                 }

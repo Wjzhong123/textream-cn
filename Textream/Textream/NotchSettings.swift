@@ -146,6 +146,28 @@ enum OverlayMode: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Notch Display Mode
+
+enum NotchDisplayMode: String, CaseIterable, Identifiable {
+    case followMouse, fixedDisplay
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .followMouse:  return "Follow Mouse"
+        case .fixedDisplay: return "Fixed Display"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .followMouse:  return "The notch moves to whichever display your mouse is on."
+        case .fixedDisplay: return "The notch stays on the selected display."
+        }
+    }
+}
+
 // MARK: - External Display Mode
 
 enum ExternalDisplayMode: String, CaseIterable, Identifiable {
@@ -166,6 +188,44 @@ enum ExternalDisplayMode: String, CaseIterable, Identifiable {
         case .off:          return "No external display output."
         case .teleprompter: return "Fullscreen teleprompter on the selected display."
         case .mirror:       return "Horizontally flipped for use with a prompter mirror rig."
+        }
+    }
+}
+
+// MARK: - Mirror Axis
+
+enum MirrorAxis: String, CaseIterable, Identifiable {
+    case horizontal, vertical, both
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .horizontal: return "Horizontal"
+        case .vertical:   return "Vertical"
+        case .both:       return "Both"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .horizontal: return "Flipped left-to-right. Standard for prompter mirror rigs."
+        case .vertical:   return "Flipped top-to-bottom."
+        case .both:       return "Flipped on both axes (rotated 180°)."
+        }
+    }
+
+    var scaleX: CGFloat {
+        switch self {
+        case .horizontal, .both: return -1
+        case .vertical: return 1
+        }
+    }
+
+    var scaleY: CGFloat {
+        switch self {
+        case .vertical, .both: return -1
+        case .horizontal: return 1
         }
     }
 }
@@ -235,6 +295,14 @@ class NotchSettings {
         didSet { UserDefaults.standard.set(overlayMode.rawValue, forKey: "overlayMode") }
     }
 
+    var notchDisplayMode: NotchDisplayMode {
+        didSet { UserDefaults.standard.set(notchDisplayMode.rawValue, forKey: "notchDisplayMode") }
+    }
+
+    var pinnedScreenID: UInt32 {
+        didSet { UserDefaults.standard.set(Int(pinnedScreenID), forKey: "pinnedScreenID") }
+    }
+
     var floatingGlassEffect: Bool {
         didSet { UserDefaults.standard.set(floatingGlassEffect, forKey: "floatingGlassEffect") }
     }
@@ -249,6 +317,10 @@ class NotchSettings {
 
     var externalScreenID: UInt32 {
         didSet { UserDefaults.standard.set(Int(externalScreenID), forKey: "externalScreenID") }
+    }
+
+    var mirrorAxis: MirrorAxis {
+        didSet { UserDefaults.standard.set(mirrorAxis.rawValue, forKey: "mirrorAxis") }
     }
 
     var listeningMode: ListeningMode {
@@ -283,12 +355,16 @@ class NotchSettings {
         self.fontFamilyPreset = FontFamilyPreset(rawValue: UserDefaults.standard.string(forKey: "fontFamilyPreset") ?? "") ?? .sans
         self.fontColorPreset = FontColorPreset(rawValue: UserDefaults.standard.string(forKey: "fontColorPreset") ?? "") ?? .white
         self.overlayMode = OverlayMode(rawValue: UserDefaults.standard.string(forKey: "overlayMode") ?? "") ?? .pinned
+        self.notchDisplayMode = NotchDisplayMode(rawValue: UserDefaults.standard.string(forKey: "notchDisplayMode") ?? "") ?? .followMouse
+        let savedPinnedScreenID = UserDefaults.standard.integer(forKey: "pinnedScreenID")
+        self.pinnedScreenID = UInt32(savedPinnedScreenID)
         self.floatingGlassEffect = UserDefaults.standard.object(forKey: "floatingGlassEffect") as? Bool ?? false
         let savedOpacity = UserDefaults.standard.double(forKey: "glassOpacity")
         self.glassOpacity = savedOpacity > 0 ? savedOpacity : 0.15
         self.externalDisplayMode = ExternalDisplayMode(rawValue: UserDefaults.standard.string(forKey: "externalDisplayMode") ?? "") ?? .off
         let savedScreenID = UserDefaults.standard.integer(forKey: "externalScreenID")
         self.externalScreenID = UInt32(savedScreenID)
+        self.mirrorAxis = MirrorAxis(rawValue: UserDefaults.standard.string(forKey: "mirrorAxis") ?? "") ?? .horizontal
         self.listeningMode = ListeningMode(rawValue: UserDefaults.standard.string(forKey: "listeningMode") ?? "") ?? .wordTracking
         let savedSpeed = UserDefaults.standard.double(forKey: "scrollSpeed")
         self.scrollSpeed = savedSpeed > 0 ? savedSpeed : 3

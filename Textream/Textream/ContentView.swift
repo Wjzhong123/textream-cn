@@ -101,7 +101,15 @@ Happy presenting! [wave]
         .onReceive(NotificationCenter.default.publisher(for: .openAbout)) { _ in
             showAbout = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            // Sync button state when app is re-activated (e.g. dock click)
+            isRunning = service.overlayController.isShowing
+        }
         .onAppear {
+            // Sync button state with overlay
+            if service.overlayController.isShowing {
+                isRunning = true
+            }
             if TextreamService.shared.launchedExternally {
                 DispatchQueue.main.async {
                     for window in NSApp.windows where !(window is NSPanel) {
