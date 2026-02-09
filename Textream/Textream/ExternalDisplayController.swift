@@ -12,6 +12,7 @@ import Combine
 class ExternalDisplayController {
     private var panel: NSPanel?
     private var cancellables = Set<AnyCancellable>()
+    let overlayContent = OverlayContent()
 
     /// Find the target external screen based on saved screen ID, or first non-main screen
     func targetScreen() -> NSScreen? {
@@ -28,19 +29,22 @@ class ExternalDisplayController {
         return screens.first
     }
 
-    func show(speechRecognizer: SpeechRecognizer, words: [String], totalCharCount: Int) {
+    func show(speechRecognizer: SpeechRecognizer, words: [String], totalCharCount: Int, hasNextPage: Bool = false) {
         let settings = NotchSettings.shared
         guard settings.externalDisplayMode != .off else { return }
         guard let screen = targetScreen() else { return }
 
         dismiss()
 
+        overlayContent.words = words
+        overlayContent.totalCharCount = totalCharCount
+        overlayContent.hasNextPage = hasNextPage
+
         let mirrorAxis = settings.externalDisplayMode == .mirror ? settings.mirrorAxis : nil
         let screenFrame = screen.frame
 
         let content = ExternalDisplayView(
-            words: words,
-            totalCharCount: totalCharCount,
+            content: overlayContent,
             speechRecognizer: speechRecognizer,
             mirrorAxis: mirrorAxis
         )
@@ -101,10 +105,13 @@ extension NSScreen {
 // MARK: - External Display SwiftUI View
 
 struct ExternalDisplayView: View {
-    let words: [String]
-    let totalCharCount: Int
+    @Bindable var content: OverlayContent
     @Bindable var speechRecognizer: SpeechRecognizer
     let mirrorAxis: MirrorAxis?
+
+    private var words: [String] { content.words }
+    private var totalCharCount: Int { content.totalCharCount }
+    private var hasNextPage: Bool { content.hasNextPage }
 
     // Timer-based scroll for classic & silence-paused modes
     @State private var timerWordProgress: Double = 0
@@ -267,12 +274,31 @@ struct ExternalDisplayView: View {
 
     private var doneView: some View {
         VStack(spacing: 12) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(.green)
-            Text("Done!")
-                .font(.system(size: 32, weight: .bold))
-                .foregroundStyle(.white)
+            if hasNextPage {
+                Button {
+                    speechRecognizer.shouldAdvancePage = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 28, weight: .bold))
+                        Text("Next Page")
+                            .font(.system(size: 28, weight: .bold))
+                    }
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 16)
+                    .background(Color.accentColor)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            } else {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.green)
+                Text("Done!")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(.white)
+            }
         }
         .transition(.scale.combined(with: .opacity))
     }

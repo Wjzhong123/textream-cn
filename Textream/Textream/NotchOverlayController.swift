@@ -30,10 +30,19 @@ class NotchFrameTracker {
     }
 }
 
+@Observable
+class OverlayContent {
+    var words: [String] = []
+    var totalCharCount: Int = 0
+    var hasNextPage: Bool = false
+}
+
 class NotchOverlayController: NSObject {
     private var panel: NSPanel?
     let speechRecognizer = SpeechRecognizer()
+    let overlayContent = OverlayContent()
     var onComplete: (() -> Void)?
+    var onNextPage: (() -> Void)?
     private var cancellables = Set<AnyCancellable>()
     private var isDismissing = false
     private var frameTracker: NotchFrameTracker?
@@ -42,11 +51,22 @@ class NotchOverlayController: NSObject {
     private var currentScreenID: UInt32 = 0
     private var statusItem: NSStatusItem?
 
-    func show(text: String, onComplete: (() -> Void)? = nil) {
+    func show(text: String, hasNextPage: Bool = false, onComplete: (() -> Void)? = nil) {
         self.onComplete = onComplete
+        self.onNextPage = { [weak self] in
+            TextreamService.shared.advanceToNextPage()
+        }
         self.isDismissing = false
         forceClose()
         observeDismiss()
+
+        // Populate overlay content
+        let normalized = text.replacingOccurrences(of: "\n", with: " ")
+            .split(omittingEmptySubsequences: true, whereSeparator: { $0.isWhitespace })
+            .map { String($0) }
+        overlayContent.words = normalized
+        overlayContent.totalCharCount = normalized.joined(separator: " ").count
+        overlayContent.hasNextPage = hasNextPage
 
         let settings = NotchSettings.shared
 
@@ -58,27 +78,37 @@ class NotchOverlayController: NSObject {
             screen = NSScreen.screens.first(where: { $0.displayID == settings.pinnedScreenID }) ?? NSScreen.main ?? NSScreen.screens[0]
         }
 
-        // Normalize newlines to spaces, then split
-        let normalized = text.replacingOccurrences(of: "\n", with: " ")
-            .split(omittingEmptySubsequences: true, whereSeparator: { $0.isWhitespace })
-            .map { String($0) }
-        let words = normalized
-        let totalCharCount = normalized.joined(separator: " ").count
-
         let screenFrame = screen.frame
 
         if settings.overlayMode == .floating && settings.followCursorWhenUndocked {
-            showFollowCursor(words: words, totalCharCount: totalCharCount, settings: settings, screen: screen)
+            showFollowCursor(settings: settings, screen: screen)
         } else {
             switch settings.overlayMode {
             case .pinned:
-                showPinned(words: words, totalCharCount: totalCharCount, settings: settings, screen: screen)
+                showPinned(settings: settings, screen: screen)
             case .floating:
-                showFloating(words: words, totalCharCount: totalCharCount, settings: settings, screenFrame: screenFrame)
+                showFloating(settings: settings, screenFrame: screenFrame)
             }
         }
 
         // Word tracking & silence-paused need the microphone; classic does not
+        if settings.listeningMode != .classic {
+            speechRecognizer.start(with: text)
+        }
+    }
+
+    func updateContent(text: String, hasNextPage: Bool) {
+        let normalized = text.replacingOccurrences(of: "\n", with: " ")
+            .split(omittingEmptySubsequences: true, whereSeparator: { $0.isWhitespace })
+            .map { String($0) }
+
+        speechRecognizer.recognizedCharCount = 0
+
+        overlayContent.words = normalized
+        overlayContent.totalCharCount = normalized.joined(separator: " ").count
+        overlayContent.hasNextPage = hasNextPage
+
+        let settings = NotchSettings.shared
         if settings.listeningMode != .classic {
             speechRecognizer.start(with: text)
         }
@@ -149,7 +179,7 @@ class NotchOverlayController: NSObject {
         panel.setFrame(NSRect(x: x, y: y, width: w, height: h), display: true)
     }
 
-    private func showPinned(words: [String], totalCharCount: Int, settings: NotchSettings, screen: NSScreen) {
+    private func showPinned(settings: NotchSettings, screen: NSScreen) {
         let notchWidth = settings.notchWidth
         let textAreaHeight = settings.textAreaHeight
         let maxExtraHeight: CGFloat = 350
@@ -169,7 +199,7 @@ class NotchOverlayController: NSObject {
         self.frameTracker = tracker
         self.currentScreenID = screen.displayID
 
-        let overlayView = NotchOverlayView(words: words, totalCharCount: totalCharCount, speechRecognizer: speechRecognizer, menuBarHeight: menuBarHeight, baseTextHeight: textAreaHeight, maxExtraHeight: maxExtraHeight, frameTracker: tracker)
+        let overlayView = NotchOverlayView(content: overlayContent, speechRecognizer: speechRecognizer, menuBarHeight: menuBarHeight, baseTextHeight: textAreaHeight, maxExtraHeight: maxExtraHeight, frameTracker: tracker)
         let contentView = NSHostingView(rootView: overlayView)
 
         // Start panel at full target size (SwiftUI animates the notch shape inside)
@@ -202,7 +232,7 @@ class NotchOverlayController: NSObject {
         }
     }
 
-    private func showFollowCursor(words: [String], totalCharCount: Int, settings: NotchSettings, screen: NSScreen) {
+    private func showFollowCursor(settings: NotchSettings, screen: NSScreen) {
         let panelWidth = settings.notchWidth
         let panelHeight = settings.textAreaHeight
 
@@ -212,8 +242,7 @@ class NotchOverlayController: NSObject {
         let yPosition = mouse.y - panelHeight
 
         let floatingView = FloatingOverlayView(
-            words: words,
-            totalCharCount: totalCharCount,
+            content: overlayContent,
             speechRecognizer: speechRecognizer,
             baseHeight: panelHeight,
             followingCursor: true
@@ -242,7 +271,7 @@ class NotchOverlayController: NSObject {
         showStatusItem()
     }
 
-    private func showFloating(words: [String], totalCharCount: Int, settings: NotchSettings, screenFrame: CGRect) {
+    private func showFloating(settings: NotchSettings, screenFrame: CGRect) {
         let panelWidth = settings.notchWidth
         let panelHeight = settings.textAreaHeight
 
@@ -250,8 +279,7 @@ class NotchOverlayController: NSObject {
         let yPosition = screenFrame.midY - panelHeight / 2 + 100
 
         let floatingView = FloatingOverlayView(
-            words: words,
-            totalCharCount: totalCharCount,
+            content: overlayContent,
             speechRecognizer: speechRecognizer,
             baseHeight: panelHeight
         )
@@ -301,13 +329,25 @@ class NotchOverlayController: NSObject {
         removeStatusItem()
         cancellables.removeAll()
         speechRecognizer.forceStop()
+        speechRecognizer.recognizedCharCount = 0
         panel?.orderOut(nil)
         panel = nil
         frameTracker = nil
         speechRecognizer.shouldDismiss = false
+        speechRecognizer.shouldAdvancePage = false
     }
 
     private func observeDismiss() {
+        // Poll for shouldAdvancePage (next page requested from overlay)
+        Timer.publish(every: 0.1, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                guard let self, self.speechRecognizer.shouldAdvancePage else { return }
+                self.speechRecognizer.shouldAdvancePage = false
+                self.onNextPage?()
+            }
+            .store(in: &cancellables)
+
         // Poll for shouldDismiss becoming true (from view setting it on completion)
         Timer.publish(every: 0.1, on: .main, in: .common)
             .autoconnect()
@@ -427,13 +467,16 @@ struct DynamicIslandShape: Shape {
 // MARK: - Overlay SwiftUI View
 
 struct NotchOverlayView: View {
-    let words: [String]
-    let totalCharCount: Int
+    @Bindable var content: OverlayContent
     @Bindable var speechRecognizer: SpeechRecognizer
     let menuBarHeight: CGFloat
     let baseTextHeight: CGFloat
     let maxExtraHeight: CGFloat
     var frameTracker: NotchFrameTracker
+
+    private var words: [String] { content.words }
+    private var totalCharCount: Int { content.totalCharCount }
+    private var hasNextPage: Bool { content.hasNextPage }
 
     // Animation state - 0.0 = notch size, 1.0 = full size
     @State private var expansion: CGFloat = 0
@@ -536,7 +579,8 @@ struct NotchOverlayView: View {
                         }
                     }
                     .padding(.horizontal, topInset)
-                    .frame(width: geo.size.width, height: targetHeight)
+                    .frame(width: currentWidth, height: targetHeight)
+                    .clipped()
                     .transition(.opacity)
                 }
             }
@@ -571,7 +615,7 @@ struct NotchOverlayView: View {
         }
         .animation(.easeInOut(duration: 0.5), value: isDone)
         .onChange(of: isDone) { _, done in
-            if done {
+            if done && !hasNextPage {
                 // Show "Done" briefly, then auto-dismiss
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                     speechRecognizer.shouldDismiss = true
@@ -593,6 +637,9 @@ struct NotchOverlayView: View {
             case .wordTracking:
                 break
             }
+        }
+        .onChange(of: content.totalCharCount) { _, _ in
+            timerWordProgress = 0
         }
     }
 
@@ -648,7 +695,8 @@ struct NotchOverlayView: View {
                         ? Double(effectiveCharCount) / Double(totalCharCount)
                         : 0
                 )
-                .frame(width: 160, height: 24)
+                .frame(width: 80, height: 24)
+                .clipped()
 
                 if listeningMode == .wordTracking {
                     Text(speechRecognizer.lastSpokenText.split(separator: " ").suffix(3).joined(separator: " "))
@@ -658,7 +706,21 @@ struct NotchOverlayView: View {
                         .truncationMode(.head)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    Spacer()
+                    Spacer(minLength: 0)
+                }
+
+                if hasNextPage {
+                    Button {
+                        speechRecognizer.shouldAdvancePage = true
+                    } label: {
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .frame(width: 24, height: 24)
+                            .background(.white.opacity(0.15))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
                 }
 
                 if listeningMode == .classic {
@@ -705,7 +767,7 @@ struct NotchOverlayView: View {
                 .buttonStyle(.plain)
             }
             .frame(height: 24)
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 20)
             .padding(.bottom, 10)
 
             // Resize handle - only visible on hover
@@ -755,12 +817,28 @@ struct NotchOverlayView: View {
     private var doneView: some View {
         VStack {
             Spacer()
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Done!")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
+            if hasNextPage {
+                Button {
+                    speechRecognizer.shouldAdvancePage = true
+                } label: {
+                    VStack(spacing: 6) {
+                        Text("Next Page")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(.white.opacity(0.5))
+                        Image(systemName: "forward.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .buttonStyle(.plain)
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Done!")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                }
             }
             Spacer()
         }
@@ -790,11 +868,14 @@ struct GlassEffectView: NSViewRepresentable {
 // MARK: - Floating Overlay View
 
 struct FloatingOverlayView: View {
-    let words: [String]
-    let totalCharCount: Int
+    @Bindable var content: OverlayContent
     @Bindable var speechRecognizer: SpeechRecognizer
     let baseHeight: CGFloat
     var followingCursor: Bool = false
+
+    private var words: [String] { content.words }
+    private var totalCharCount: Int { content.totalCharCount }
+    private var hasNextPage: Bool { content.hasNextPage }
 
     @State private var appeared = false
 
@@ -899,7 +980,7 @@ struct FloatingOverlayView: View {
         }
         .animation(.easeInOut(duration: 0.5), value: isDone)
         .onChange(of: isDone) { _, done in
-            if done {
+            if done && !hasNextPage {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                     speechRecognizer.shouldDismiss = true
                 }
@@ -920,6 +1001,9 @@ struct FloatingOverlayView: View {
             case .wordTracking:
                 break
             }
+        }
+        .onChange(of: content.totalCharCount) { _, _ in
+            timerWordProgress = 0
         }
     }
 
@@ -1024,12 +1108,31 @@ struct FloatingOverlayView: View {
     private var floatingDoneView: some View {
         VStack {
             Spacer()
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                Text("Done!")
-                    .font(.system(size: 14, weight: .bold))
+            if hasNextPage {
+                Button {
+                    speechRecognizer.shouldAdvancePage = true
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 14, weight: .bold))
+                        Text("Next Page")
+                            .font(.system(size: 14, weight: .bold))
+                    }
                     .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 10)
+                    .background(Color.accentColor)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Done!")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                }
             }
             Spacer()
         }

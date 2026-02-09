@@ -12,7 +12,7 @@ extension Notification.Name {
     static let openAbout = Notification.Name("openAbout")
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
         let launchedByURL: Bool
         if let event = NSAppleEventManager.shared().currentAppleEvent {
@@ -36,6 +36,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Silent update check on launch
         UpdateChecker.shared.checkForUpdates(silent: true)
+
+        // Set window delegate to intercept close and disable tabs
+        DispatchQueue.main.async {
+            for window in NSApp.windows where !(window is NSPanel) {
+                window.delegate = self
+                window.tabbingMode = .disallowed
+            }
+        }
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        // Hide the window instead of closing it
+        sender.orderOut(nil)
+        return false
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -96,6 +110,8 @@ struct TextreamApp: App {
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
+            CommandGroup(replacing: .newItem) { }
+            CommandGroup(replacing: .windowArrangement) { }
         }
     }
 }

@@ -5,6 +5,7 @@
 //  Created by Fatih Kadir Akın on 8.02.2026.
 //
 
+import AppKit
 import Foundation
 import Speech
 import AVFoundation
@@ -17,6 +18,7 @@ class SpeechRecognizer {
     var audioLevels: [CGFloat] = Array(repeating: 0, count: 30)
     var lastSpokenText: String = ""
     var shouldDismiss: Bool = false
+    var shouldAdvancePage: Bool = false
 
     /// True when recent audio levels indicate the user is actively speaking
     var isSpeaking: Bool {
@@ -63,15 +65,55 @@ class SpeechRecognizer {
         retryCount = 0
         error = nil
 
+        // Check microphone permission first
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .denied, .restricted:
+            error = "Microphone access denied. Open System Settings → Privacy & Security → Microphone to allow Textream."
+            openMicrophoneSettings()
+            return
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        self?.requestSpeechAuthAndBegin()
+                    } else {
+                        self?.error = "Microphone access denied. Open System Settings → Privacy & Security → Microphone to allow Textream."
+                    }
+                }
+            }
+            return
+        case .authorized:
+            break
+        @unknown default:
+            break
+        }
+
+        requestSpeechAuthAndBegin()
+    }
+
+    private func requestSpeechAuthAndBegin() {
         SFSpeechRecognizer.requestAuthorization { [weak self] status in
             DispatchQueue.main.async {
                 switch status {
                 case .authorized:
                     self?.beginRecognition()
                 default:
-                    self?.error = "Speech recognition not authorized"
+                    self?.error = "Speech recognition not authorized. Open System Settings → Privacy & Security → Speech Recognition to allow Textream."
+                    self?.openSpeechRecognitionSettings()
                 }
             }
+        }
+    }
+
+    private func openMicrophoneSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    private func openSpeechRecognitionSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_SpeechRecognition") {
+            NSWorkspace.shared.open(url)
         }
     }
 

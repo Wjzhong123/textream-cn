@@ -6,14 +6,33 @@
 //
 
 import AppKit
+import Combine
 import SwiftUI
 
-class TextreamService: NSObject {
+class TextreamService: NSObject, ObservableObject {
     static let shared = TextreamService()
     let overlayController = NotchOverlayController()
     let externalDisplayController = ExternalDisplayController()
     var onOverlayDismissed: (() -> Void)?
     var launchedExternally = false
+
+    @Published var pages: [String] = [""]
+    @Published var currentPageIndex: Int = 0
+    @Published var readPages: Set<Int> = []
+
+    var hasNextPage: Bool {
+        for i in (currentPageIndex + 1)..<pages.count {
+            if !pages[i].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return true
+            }
+        }
+        return false
+    }
+
+    var currentPageText: String {
+        guard currentPageIndex < pages.count else { return "" }
+        return pages[currentPageIndex]
+    }
 
     func readText(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -22,7 +41,7 @@ class TextreamService: NSObject {
         launchedExternally = true
         hideMainWindow()
 
-        overlayController.show(text: trimmed) { [weak self] in
+        overlayController.show(text: trimmed, hasNextPage: hasNextPage) { [weak self] in
             self?.externalDisplayController.dismiss()
             self?.onOverlayDismissed?()
         }
@@ -36,8 +55,49 @@ class TextreamService: NSObject {
         externalDisplayController.show(
             speechRecognizer: overlayController.speechRecognizer,
             words: words,
-            totalCharCount: totalCharCount
+            totalCharCount: totalCharCount,
+            hasNextPage: hasNextPage
         )
+    }
+
+    func readCurrentPage() {
+        let trimmed = currentPageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        readPages.insert(currentPageIndex)
+        readText(trimmed)
+    }
+
+    func advanceToNextPage() {
+        // Skip empty pages
+        var nextIndex = currentPageIndex + 1
+        while nextIndex < pages.count {
+            let text = pages[nextIndex].trimmingCharacters(in: .whitespacesAndNewlines)
+            if !text.isEmpty { break }
+            nextIndex += 1
+        }
+        guard nextIndex < pages.count else { return }
+        currentPageIndex = nextIndex
+        readPages.insert(currentPageIndex)
+
+        let trimmed = currentPageText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        // Update content in-place without recreating the panel
+        overlayController.updateContent(text: trimmed, hasNextPage: hasNextPage)
+
+        // Also update external display content in-place
+        let normalized = trimmed.replacingOccurrences(of: "\n", with: " ")
+            .split(omittingEmptySubsequences: true, whereSeparator: { $0.isWhitespace })
+            .map { String($0) }
+        externalDisplayController.overlayContent.words = normalized
+        externalDisplayController.overlayContent.totalCharCount = normalized.joined(separator: " ").count
+        externalDisplayController.overlayContent.hasNextPage = hasNextPage
+    }
+
+    func startAllPages() {
+        readPages.removeAll()
+        currentPageIndex = 0
+        readCurrentPage()
     }
 
     func hideMainWindow() {

@@ -8,7 +8,13 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var text: String = """
+    @ObservedObject private var service = TextreamService.shared
+    @State private var isRunning = false
+    @State private var showSettings = false
+    @State private var showAbout = false
+    @FocusState private var isTextFocused: Bool
+
+    private let defaultText = """
 Welcome to Textream! This is your personal teleprompter that sits right below your MacBook's notch. [smile]
 
 As you read aloud, the text will highlight in real-time, following your voice. The speech recognition matches your words and keeps track of your progress. [pause]
@@ -19,11 +25,6 @@ Try reading this passage out loud to see how the highlighting works. The wavefor
 
 Happy presenting! [wave]
 """
-    @State private var isRunning = false
-    @State private var showSettings = false
-    @State private var showAbout = false
-    @FocusState private var isTextFocused: Bool
-    private let service = TextreamService.shared
 
     private var languageLabel: String {
         let locale = NotchSettings.shared.speechLocale
@@ -31,62 +32,105 @@ Happy presenting! [wave]
             ?? locale
     }
 
-    var body: some View {
-        ZStack {
-            // Text editor - full window
-            TextEditor(text: $text)
-                .font(.system(size: 16, weight: .regular, design: .rounded))
-                .scrollContentBackground(.hidden)
-                .padding(20)
-                .padding(.top, 12) // Extra space for window drag area
-                .focused($isTextFocused)
+    private var currentText: Binding<String> {
+        Binding(
+            get: {
+                guard service.currentPageIndex < service.pages.count else { return "" }
+                return service.pages[service.currentPageIndex]
+            },
+            set: { newValue in
+                guard service.currentPageIndex < service.pages.count else { return }
+                service.pages[service.currentPageIndex] = newValue
+            }
+        )
+    }
 
-            // Floating action button (bottom-right)
-            VStack {
-                Spacer()
-                HStack {
+    private var hasAnyContent: Bool {
+        service.pages.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Sidebar with page squares
+            if service.pages.count > 1 {
+                pageSidebar
+            }
+
+            // Main content area
+            ZStack {
+                TextEditor(text: currentText)
+                    .font(.system(size: 16, weight: .regular, design: .rounded))
+                    .scrollContentBackground(.hidden)
+                    .padding(20)
+                    .padding(.top, 12)
+                    .focused($isTextFocused)
+
+                // Floating action button (bottom-right)
+                VStack {
                     Spacer()
-                    Button {
-                        if isRunning {
-                            stop()
-                        } else {
-                            run()
+                    HStack {
+                        Spacer()
+                        Button {
+                            if isRunning {
+                                stop()
+                            } else {
+                                run()
+                            }
+                        } label: {
+                            Image(systemName: isRunning ? "stop.fill" : "play.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                                .background(isRunning ? Color.red : Color.accentColor)
+                                .clipShape(Circle())
+                                .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
                         }
-                    } label: {
-                        Image(systemName: isRunning ? "stop.fill" : "play.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 44, height: 44)
-                            .background(isRunning ? Color.red : Color.accentColor)
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+                        .buttonStyle(.plain)
+                        .disabled(!isRunning && !hasAnyContent)
+                        .opacity(!hasAnyContent && !isRunning ? 0.4 : 1)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!isRunning && text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .opacity(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isRunning ? 0.4 : 1)
+                    .padding(20)
                 }
-                .padding(20)
             }
         }
         .frame(minWidth: 360, minHeight: 240)
         .background(.ultraThinMaterial)
         .toolbar {
             ToolbarItem(placement: .automatic) {
-                Button {
-                    showSettings = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: NotchSettings.shared.listeningMode.icon)
-                            .font(.system(size: 10))
-                        Text(NotchSettings.shared.listeningMode == .wordTracking
-                             ? languageLabel
-                             : NotchSettings.shared.listeningMode.label)
-                            .font(.system(size: 11, weight: .medium))
-                            .lineLimit(1)
+                HStack(spacing: 8) {
+                    // Add page button in toolbar
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            service.pages.append("")
+                            service.currentPageIndex = service.pages.count - 1
+                        }
+                    } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text("Page")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundStyle(.secondary)
                     }
-                    .foregroundStyle(.secondary)
+                    .buttonStyle(.plain)
+
+                    Button {
+                        showSettings = true
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: NotchSettings.shared.listeningMode.icon)
+                                .font(.system(size: 10))
+                            Text(NotchSettings.shared.listeningMode == .wordTracking
+                                 ? languageLabel
+                                 : NotchSettings.shared.listeningMode.label)
+                                .font(.system(size: 11, weight: .medium))
+                                .lineLimit(1)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
         .sheet(isPresented: $showSettings) {
@@ -106,6 +150,10 @@ Happy presenting! [wave]
             isRunning = service.overlayController.isShowing
         }
         .onAppear {
+            // Set default text for the first page if empty
+            if service.pages.count == 1 && service.pages[0].isEmpty {
+                service.pages[0] = defaultText
+            }
             // Sync button state with overlay
             if service.overlayController.isShowing {
                 isRunning = true
@@ -122,20 +170,108 @@ Happy presenting! [wave]
         }
     }
 
+    // MARK: - Page Sidebar
+
+    private var pageSidebar: some View {
+        VStack(spacing: 0) {
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 6) {
+                    ForEach(Array(service.pages.enumerated()), id: \.offset) { index, _ in
+                        let isRead = service.readPages.contains(index)
+                        let isCurrent = service.currentPageIndex == index
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.15)) {
+                                service.currentPageIndex = index
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text("\(index + 1)")
+                                    .font(.system(size: 11, weight: isCurrent ? .bold : .medium, design: .monospaced))
+                                    .foregroundStyle(isCurrent ? .white : .primary)
+                                Spacer()
+                                if isRead && !isCurrent {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(.green)
+                                }
+                            }
+                            .padding(.horizontal, 8)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 30)
+                            .background(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(isCurrent ? Color.accentColor : Color.primary.opacity(0.06))
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            if service.pages.count > 1 {
+                                Button(role: .destructive) {
+                                    removePage(at: index)
+                                } label: {
+                                    Label("Delete Page", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.top, 8)
+            }
+
+            Divider().padding(.horizontal, 8)
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    service.pages.append("")
+                    service.currentPageIndex = service.pages.count - 1
+                }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 30)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+        }
+        .frame(width: 68)
+        .background(Color.primary.opacity(0.03))
+    }
+
+    // MARK: - Actions
+
+    private func removePage(at index: Int) {
+        guard service.pages.count > 1 else { return }
+        withAnimation(.easeInOut(duration: 0.2)) {
+            service.pages.remove(at: index)
+            if service.currentPageIndex >= service.pages.count {
+                service.currentPageIndex = service.pages.count - 1
+            } else if service.currentPageIndex > index {
+                service.currentPageIndex -= 1
+            }
+        }
+    }
+
     private func run() {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard hasAnyContent else { return }
         service.onOverlayDismissed = { [self] in
             isRunning = false
+            service.readPages.removeAll()
             NSApp.activate(ignoringOtherApps: true)
             NSApp.windows.first?.makeKeyAndOrderFront(nil)
         }
-        service.readText(trimmed)
+        service.readPages.removeAll()
+        service.currentPageIndex = 0
+        service.readCurrentPage()
         isRunning = true
     }
 
     private func stop() {
         service.overlayController.dismiss()
+        service.readPages.removeAll()
         isRunning = false
     }
 }
