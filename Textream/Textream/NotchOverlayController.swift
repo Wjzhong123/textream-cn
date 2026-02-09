@@ -887,6 +887,10 @@ struct FloatingOverlayView: View {
 
     @State private var appeared = false
 
+    // Auto-advance countdown for follow-cursor mode (where buttons can't be clicked)
+    @State private var countdownRemaining: Int = 0
+    @State private var countdownTimer: Timer? = nil
+
     // Timer-based scroll for classic & silence-paused modes
     @State private var timerWordProgress: Double = 0
     @State private var isPaused: Bool = false
@@ -995,6 +999,9 @@ struct FloatingOverlayView: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                         speechRecognizer.shouldDismiss = true
                     }
+                } else if followingCursor {
+                    // Start 3-second countdown to auto-advance (button can't be clicked in follow-cursor mode)
+                    startCountdown()
                 }
             }
         }
@@ -1117,26 +1124,55 @@ struct FloatingOverlayView: View {
         }
     }
 
+    private func startCountdown() {
+        countdownTimer?.invalidate()
+        countdownRemaining = 3
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            DispatchQueue.main.async {
+                countdownRemaining -= 1
+                if countdownRemaining <= 0 {
+                    timer.invalidate()
+                    countdownTimer = nil
+                    speechRecognizer.shouldAdvancePage = true
+                }
+            }
+        }
+    }
+
     private var floatingDoneView: some View {
         VStack {
             Spacer()
             if hasNextPage {
-                Button {
-                    speechRecognizer.shouldAdvancePage = true
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 14, weight: .bold))
+                if followingCursor {
+                    // Auto-advance countdown (buttons can't be clicked in follow-cursor mode)
+                    VStack(spacing: 6) {
                         Text("Next Page")
                             .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                        Text("\(countdownRemaining)")
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white)
+                            .contentTransition(.numericText())
+                            .animation(.easeInOut(duration: 0.3), value: countdownRemaining)
                     }
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 10)
-                    .background(Color.accentColor)
-                    .clipShape(Capsule())
+                } else {
+                    Button {
+                        speechRecognizer.shouldAdvancePage = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 14, weight: .bold))
+                            Text("Next Page")
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.accentColor)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             } else {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill")
