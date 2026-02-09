@@ -14,6 +14,7 @@ extension Notification.Name {
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
+        NSWindow.allowsAutomaticWindowTabbing = false
         let launchedByURL: Bool
         if let event = NSAppleEventManager.shared().currentAppleEvent {
             launchedByURL = event.eventClass == kInternetEventClass
@@ -37,11 +38,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Silent update check on launch
         UpdateChecker.shared.checkForUpdates(silent: true)
 
-        // Set window delegate to intercept close and disable tabs
+        // Set window delegate to intercept close, disable tabs and fullscreen
         DispatchQueue.main.async {
             for window in NSApp.windows where !(window is NSPanel) {
                 window.delegate = self
                 window.tabbingMode = .disallowed
+                window.collectionBehavior.remove(.fullScreenPrimary)
+                window.collectionBehavior.insert(.fullScreenNone)
+            }
+            self.removeUnwantedMenus()
+        }
+    }
+
+    private func removeUnwantedMenus() {
+        guard let mainMenu = NSApp.mainMenu else { return }
+        // Remove View and Window menus (keep Edit for copy/paste)
+        let menusToRemove = ["View", "Window"]
+        for title in menusToRemove {
+            if let index = mainMenu.items.firstIndex(where: { $0.title == title }) {
+                mainMenu.removeItem(at: index)
             }
         }
     }
@@ -68,14 +83,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
-        let wasExternal = TextreamService.shared.launchedExternally
-        TextreamService.shared.launchedExternally = true
-        if !wasExternal {
-            NSApp.setActivationPolicy(.accessory)
-        }
-        TextreamService.shared.hideMainWindow()
         for url in urls {
-            TextreamService.shared.handleURL(url)
+            if url.pathExtension == "textream" {
+                TextreamService.shared.openFileAtURL(url)
+                // Show the main window for file opens
+                for window in NSApp.windows where !(window is NSPanel) {
+                    window.makeKeyAndOrderFront(nil)
+                }
+                NSApp.activate(ignoringOtherApps: true)
+            } else {
+                let wasExternal = TextreamService.shared.launchedExternally
+                TextreamService.shared.launchedExternally = true
+                if !wasExternal {
+                    NSApp.setActivationPolicy(.accessory)
+                }
+                TextreamService.shared.hideMainWindow()
+                TextreamService.shared.handleURL(url)
+            }
         }
     }
 }
@@ -88,7 +112,11 @@ struct TextreamApp: App {
         WindowGroup {
             ContentView()
                 .onOpenURL { url in
-                    TextreamService.shared.handleURL(url)
+                    if url.pathExtension == "textream" {
+                        TextreamService.shared.openFileAtURL(url)
+                    } else {
+                        TextreamService.shared.handleURL(url)
+                    }
                 }
         }
         .windowStyle(.hiddenTitleBar)
@@ -110,8 +138,32 @@ struct TextreamApp: App {
                 }
                 .keyboardShortcut(",", modifiers: .command)
             }
-            CommandGroup(replacing: .newItem) { }
+            CommandGroup(replacing: .newItem) {
+                Button("Open…") {
+                    TextreamService.shared.openFile()
+                }
+                .keyboardShortcut("o", modifiers: .command)
+
+                Divider()
+
+                Button("Save") {
+                    TextreamService.shared.saveFile()
+                }
+                .keyboardShortcut("s", modifiers: .command)
+
+                Button("Save As…") {
+                    TextreamService.shared.saveFileAs()
+                }
+                .keyboardShortcut("s", modifiers: [.command, .shift])
+            }
             CommandGroup(replacing: .windowArrangement) { }
+            CommandGroup(replacing: .help) {
+                Button("Textream Help") {
+                    if let url = URL(string: "https://github.com/f/textream") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
         }
     }
 }

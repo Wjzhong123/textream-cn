@@ -62,7 +62,6 @@ Happy presenting! [wave]
                     .font(.system(size: 16, weight: .regular, design: .rounded))
                     .scrollContentBackground(.hidden)
                     .padding(20)
-                    .padding(.top, 12)
                     .focused($isTextFocused)
 
                 // Floating action button (bottom-right)
@@ -98,6 +97,25 @@ Happy presenting! [wave]
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 HStack(spacing: 8) {
+                    if let fileURL = service.currentFileURL {
+                        Button {
+                            service.openFile()
+                        } label: {
+                            HStack(spacing: 4) {
+                                if service.pages != service.savedPages {
+                                    Circle()
+                                        .fill(.orange)
+                                        .frame(width: 6, height: 6)
+                                }
+                                Text(fileURL.deletingPathExtension().lastPathComponent)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .lineLimit(1)
+                            }
+                            .foregroundStyle(.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
                     // Add page button in toolbar
                     Button {
                         withAnimation(.easeInOut(duration: 0.2)) {
@@ -257,6 +275,8 @@ Happy presenting! [wave]
 
     private func run() {
         guard hasAnyContent else { return }
+        // Resign text editor focus before hiding the window to avoid ViewBridge crashes
+        isTextFocused = false
         service.onOverlayDismissed = { [self] in
             isRunning = false
             service.readPages.removeAll()

@@ -8,6 +8,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import UniformTypeIdentifiers
 
 class TextreamService: NSObject, ObservableObject {
     static let shared = TextreamService()
@@ -103,8 +104,111 @@ class TextreamService: NSObject, ObservableObject {
     func hideMainWindow() {
         DispatchQueue.main.async {
             for window in NSApp.windows where !(window is NSPanel) {
+                window.makeFirstResponder(nil)
                 window.orderOut(nil)
             }
+        }
+    }
+
+    @Published var currentFileURL: URL?
+    @Published var savedPages: [String] = [""]
+
+    // MARK: - File Operations
+
+    func saveFile() {
+        if let url = currentFileURL {
+            saveToURL(url)
+        } else {
+            saveFileAs()
+        }
+    }
+
+    func saveFileAs() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "textream")!]
+        panel.nameFieldStringValue = "Untitled.textream"
+        panel.canCreateDirectories = true
+
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.saveToURL(url)
+        }
+    }
+
+    private func saveToURL(_ url: URL) {
+        do {
+            let data = try JSONEncoder().encode(pages)
+            try data.write(to: url, options: .atomic)
+            currentFileURL = url
+            savedPages = pages
+            NSDocumentController.shared.noteNewRecentDocumentURL(url)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Failed to save file"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
+        }
+    }
+
+    var hasUnsavedChanges: Bool {
+        pages != savedPages
+    }
+
+    func openFile() {
+        guard confirmDiscardIfNeeded() else { return }
+
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [.init(filenameExtension: "textream")!]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+
+        panel.begin { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.openFileAtURL(url)
+        }
+    }
+
+    /// Returns true if it's safe to proceed (saved, discarded, or no changes).
+    /// Returns false if the user cancelled.
+    func confirmDiscardIfNeeded() -> Bool {
+        guard hasUnsavedChanges else { return true }
+
+        let alert = NSAlert()
+        alert.messageText = "You have unsaved changes"
+        alert.informativeText = "Do you want to save your changes before opening another file?"
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Discard")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .warning
+
+        let response = alert.runModal()
+        switch response {
+        case .alertFirstButtonReturn:
+            saveFile()
+            return true
+        case .alertSecondButtonReturn:
+            return true
+        default:
+            return false
+        }
+    }
+
+    func openFileAtURL(_ url: URL) {
+        do {
+            let data = try Data(contentsOf: url)
+            let loadedPages = try JSONDecoder().decode([String].self, from: data)
+            guard !loadedPages.isEmpty else { return }
+            pages = loadedPages
+            savedPages = loadedPages
+            currentPageIndex = 0
+            readPages.removeAll()
+            currentFileURL = url
+            NSDocumentController.shared.noteNewRecentDocumentURL(url)
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Failed to open file"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
         }
     }
 

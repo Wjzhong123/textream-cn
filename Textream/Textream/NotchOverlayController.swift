@@ -767,7 +767,7 @@ struct NotchOverlayView: View {
                 .buttonStyle(.plain)
             }
             .frame(height: 24)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 12)
             .padding(.bottom, 10)
 
             // Resize handle - only visible on hover
