@@ -24,22 +24,25 @@
     </clipPath>
   </defs>
 
-  <!-- Background -->
-  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
+  <!-- Wrap in group with padding: 824/1024 ≈ 0.80469, offset 100px -->
+  <g transform="translate(100, 100) scale(0.80469)">
+    <!-- Background -->
+    <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
 
-  <g clip-path="url(#roundedBg)">
-    <!-- Notch body -->
-    <path d="M 172 0 Q 240 0, 240 68 L 240 760 Q 240 840, 320 840 L 704 840 Q 784 840, 784 760 L 784 68 Q 784 0, 852 0 Z" fill="#2A2A2C"/>
+    <g clip-path="url(#roundedBg)">
+      <!-- Notch body -->
+      <path d="M 172 0 Q 240 0, 240 68 L 240 760 Q 240 840, 320 840 L 704 840 Q 784 840, 784 760 L 784 68 Q 784 0, 852 0 Z" fill="#2A2A2C"/>
 
-    <!-- Glass shine -->
-    <g clip-path="url(#notchClip)">
-      <ellipse cx="512" cy="0" rx="360" ry="200" fill="url(#shine)"/>
+      <!-- Glass shine -->
+      <g clip-path="url(#notchClip)">
+        <ellipse cx="512" cy="0" rx="360" ry="200" fill="url(#shine)"/>
+      </g>
+
+      <!-- Edge highlight -->
+      <path d="M 172 0 Q 240 0, 240 68 L 240 760 Q 240 840, 320 840 L 704 840 Q 784 840, 784 760 L 784 68 Q 784 0, 852 0 Z" fill="none" stroke="url(#edge)" stroke-width="2.5"/>
+
+      <!-- Bold T letter -->
+      <text x="512" y="600" font-family="-apple-system, SF Pro Display, Helvetica Neue, sans-serif" font-size="480" font-weight="800" fill="url(#accent)" text-anchor="middle">T</text>
     </g>
-
-    <!-- Edge highlight -->
-    <path d="M 172 0 Q 240 0, 240 68 L 240 760 Q 240 840, 320 840 L 704 840 Q 784 840, 784 760 L 784 68 Q 784 0, 852 0 Z" fill="none" stroke="url(#edge)" stroke-width="2.5"/>
-
-    <!-- Bold T letter -->
-    <text x="512" y="600" font-family="-apple-system, SF Pro Display, Helvetica Neue, sans-serif" font-size="480" font-weight="800" fill="url(#accent)" text-anchor="middle">T</text>
   </g>
 </svg>
