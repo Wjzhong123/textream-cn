@@ -218,6 +218,121 @@ textream://read?text=Hello%20world
 
 It also registers as a macOS Service, so you can select text in any app and send it to Textream via the Services menu.
 
+## Director Mode API
+
+The Director Mode exposes an HTTP server and a WebSocket server on your local network. You can build your own director client using the protocol below.
+
+### Ports
+
+| Service | Default Port | Configurable in |
+|---|---|---|
+| **HTTP** (serves the built-in web UI) | `7575` | Settings → Director → Advanced |
+| **WebSocket** (bidirectional communication) | `7576` (HTTP port + 1) | Automatic |
+
+### Connecting
+
+1. Open a WebSocket connection to `ws://<mac-ip>:<ws-port>` (e.g. `ws://192.168.1.42:7576`).
+2. The server immediately begins sending **state frames** as JSON at ~10 Hz once a script is active.
+3. Send **command frames** as JSON to control the teleprompter.
+
+### Commands (Client → App)
+
+Send JSON messages over the WebSocket:
+
+#### `setText` — Start reading a new script
+
+```json
+{
+  "type": "setText",
+  "text": "Welcome everyone to today's live stream..."
+}
+```
+
+Replaces the current text, starts word tracking, and opens the teleprompter overlay. This is equivalent to pressing **Go** in the built-in web UI.
+
+#### `updateText` — Edit unread text while active
+
+```json
+{
+  "type": "updateText",
+  "text": "Welcome everyone to today's live stream We changed the rest of the script...",
+  "readCharCount": 42
+}
+```
+
+Updates the full script text while preserving the read position. `readCharCount` is the number of characters already read (locked). Only text after this offset is replaced. Use this for live editing during a read.
+
+#### `stop` — Stop the teleprompter
+
+```json
+{
+  "type": "stop"
+}
+```
+
+Stops word tracking and dismisses the overlay.
+
+### State (App → Client)
+
+The server broadcasts a JSON object on every tick (~100 ms):
+
+```json
+{
+  "words": ["Welcome", "everyone", "to", "today's", "live", "stream"],
+  "highlightedCharCount": 24,
+  "totalCharCount": 120,
+  "isActive": true,
+  "isDone": false,
+  "isListening": true,
+  "fontColor": "#F5F5F7",
+  "lastSpokenText": "Welcome everyone to today's",
+  "audioLevels": [0.12, 0.34, 0.08, ...]
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `words` | `string[]` | The script split into words (same order as displayed in the overlay). |
+| `highlightedCharCount` | `int` | Number of characters recognized so far. Use this to determine the read boundary. |
+| `totalCharCount` | `int` | Total character count of the full script. |
+| `isActive` | `bool` | `true` when the teleprompter overlay is visible and a script is loaded. |
+| `isDone` | `bool` | `true` when `highlightedCharCount >= totalCharCount` (finished reading). |
+| `isListening` | `bool` | `true` when the microphone is actively listening. |
+| `fontColor` | `string` | CSS color of the text in the overlay (user preference). |
+| `lastSpokenText` | `string` | Last recognized speech fragment. |
+| `audioLevels` | `double[]` | Array of audio level samples (0.0–1.0) for waveform visualization. |
+
+When the overlay is not active, the server sends a frame with `isActive: false` and empty arrays.
+
+### Example: Minimal Python Client
+
+```python
+import asyncio, json, websockets
+
+async def director():
+    async with websockets.connect("ws://192.168.1.42:7576") as ws:
+        # Send a script
+        await ws.send(json.dumps({
+            "type": "setText",
+            "text": "Hello everyone, welcome to the show."
+        }))
+
+        # Listen for state updates
+        async for msg in ws:
+            state = json.loads(msg)
+            pct = 0
+            if state["totalCharCount"] > 0:
+                pct = state["highlightedCharCount"] / state["totalCharCount"] * 100
+            print(f"Progress: {pct:.0f}%  Done: {state['isDone']}")
+            if state["isDone"]:
+                break
+
+        # Stop
+        await ws.send(json.dumps({"type": "stop"}))
+
+asyncio.run(director())
+```
+
 ## License
 
 MIT
