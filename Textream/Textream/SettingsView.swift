@@ -263,7 +263,7 @@ struct NotchPreviewContent: View {
 // MARK: - Settings Tabs
 
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case appearance, guidance, teleprompter, external, browser
+    case appearance, guidance, teleprompter, external, browser, director
 
     var id: String { rawValue }
 
@@ -274,6 +274,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .teleprompter: return "Teleprompter"
         case .external:   return "External"
         case .browser:    return "Remote"
+        case .director:   return "Director"
         }
     }
 
@@ -284,6 +285,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .teleprompter: return "macwindow"
         case .external:   return "rectangle.on.rectangle"
         case .browser:    return "antenna.radiowaves.left.and.right"
+        case .director:   return "megaphone"
         }
     }
 }
@@ -351,6 +353,8 @@ struct SettingsView: View {
                     externalTab
                 case .browser:
                     browserTab
+                case .director:
+                    directorTab
                 }
 
                 Divider()
@@ -932,6 +936,7 @@ struct SettingsView: View {
     @State private var showAdvanced: Bool = false
 
     private var browserTab: some View {
+        ScrollView(.vertical, showsIndicators: false) {
         VStack(alignment: .leading, spacing: 14) {
             Text("Scan the QR code or open the URL with your iPhone, Android or TV browser on the same Wi-Fi network.")
                 .font(.system(size: 11))
@@ -1033,10 +1038,133 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             }
 
-            Spacer()
         }
         .padding(16)
+        }
         .onAppear { localIP = BrowserServer.localIPAddress() ?? "localhost" }
+    }
+
+    // MARK: - Director Tab
+
+    @State private var directorLocalIP: String = BrowserServer.localIPAddress() ?? "localhost"
+    @State private var showDirectorAdvanced: Bool = false
+
+    private var directorTab: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Director Mode lets a remote person control your teleprompter script in real-time via a web browser. The editor will be disabled while active.")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
+
+            Toggle(isOn: $settings.directorModeEnabled) {
+                Text("Enable Director Mode")
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+
+            if settings.directorModeEnabled {
+                Divider()
+
+                let url = "http://\(directorLocalIP):\(settings.directorServerPort)"
+
+                if let qrImage = generateQRCode(from: url) {
+                    HStack {
+                        Spacer()
+                        Image(nsImage: qrImage)
+                            .interpolation(.none)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 120, height: 120)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        Spacer()
+                    }
+                }
+
+                HStack(spacing: 10) {
+                    Text(url)
+                        .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Color.accentColor)
+                        .textSelection(.enabled)
+
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(url, forType: .string)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color.accentColor.opacity(0.08))
+                )
+
+                HStack(spacing: 6) {
+                    Image(systemName: "info.circle")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                    Text("Word tracking is forced when the director starts reading.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+
+                DisclosureGroup("Advanced", isExpanded: $showDirectorAdvanced) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Port")
+                                .font(.system(size: 13, weight: .medium))
+                            HStack(spacing: 8) {
+                                TextField("Port", text: Binding(
+                                    get: { String(settings.directorServerPort) },
+                                    set: { str in
+                                        if let val = UInt16(str), val >= 1024 {
+                                            settings.directorServerPort = val
+                                        }
+                                    }
+                                ))
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 80)
+
+                                Text("Restart required after change")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(.tertiary)
+
+                                Spacer()
+
+                                Button("Restart") {
+                                    TextreamService.shared.directorServer.stop()
+                                    TextreamService.shared.directorServer.start()
+                                    directorLocalIP = BrowserServer.localIPAddress() ?? "localhost"
+                                }
+                                .controlSize(.small)
+                                .buttonStyle(.bordered)
+                            }
+                        }
+
+                        HStack(spacing: 6) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                            Text("Uses ports \(String(settings.directorServerPort)) (HTTP) and \(String(settings.directorServerPort + 1)) (WebSocket).")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.top, 8)
+                }
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.secondary)
+            }
+
+        }
+        .padding(16)
+        }
+        .onAppear { directorLocalIP = BrowserServer.localIPAddress() ?? "localhost" }
     }
 
     // MARK: - Shared Components
@@ -1151,6 +1279,8 @@ struct SettingsView: View {
         settings.autoNextPageDelay = 3
         settings.browserServerEnabled = false
         settings.browserServerPort = 7373
+        settings.directorModeEnabled = false
+        settings.directorServerPort = 7575
     }
 
     private func refreshScreens() {

@@ -102,6 +102,17 @@ class SpeechRecognizer {
     private var sessionGeneration: Int = 0
     private var suppressConfigChange: Bool = false
 
+    /// Update the source text while preserving the current recognized char count.
+    /// Used by Director Mode to live-edit unread text without resetting read progress.
+    func updateText(_ text: String, preservingCharCount: Int) {
+        let words = splitTextIntoWords(text)
+        let collapsed = words.joined(separator: " ")
+        sourceText = collapsed
+        normalizedSource = Self.normalize(collapsed)
+        recognizedCharCount = min(preservingCharCount, collapsed.count)
+        matchStartOffset = recognizedCharCount
+    }
+
     /// Jump highlight to a specific char offset (e.g. when user taps a word)
     func jumpTo(charOffset: Int) {
         recognizedCharCount = charOffset

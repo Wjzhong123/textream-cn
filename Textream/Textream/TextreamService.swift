@@ -15,8 +15,10 @@ class TextreamService: NSObject, ObservableObject {
     let overlayController = NotchOverlayController()
     let externalDisplayController = ExternalDisplayController()
     let browserServer = BrowserServer()
+    let directorServer = DirectorServer()
     var onOverlayDismissed: (() -> Void)?
     var launchedExternally = false
+    @Published var directorIsReading = false
 
     @Published var pages: [String] = [""]
     @Published var currentPageIndex: Int = 0
@@ -308,6 +310,127 @@ class TextreamService: NSObject, ObservableObject {
         } else {
             browserServer.stop()
         }
+    }
+
+    // MARK: - Director Server
+
+    func updateDirectorServer() {
+        if NotchSettings.shared.directorModeEnabled {
+            if !directorServer.isRunning {
+                directorServer.start()
+                wireDirectorCallbacks()
+            }
+        } else {
+            directorServer.stop()
+            if directorIsReading {
+                overlayController.dismiss()
+                directorIsReading = false
+            }
+        }
+    }
+
+    private func wireDirectorCallbacks() {
+        directorServer.onSetText = { [weak self] text in
+            self?.setTextFromDirector(text)
+        }
+        directorServer.onUpdateText = { [weak self] text, readCharCount in
+            self?.updateTextFromDirector(text, readCharCount: readCharCount)
+        }
+        directorServer.onStop = { [weak self] in
+            self?.stopDirectorReading()
+        }
+    }
+
+    func setTextFromDirector(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        // Director mode is single page
+        pages = [trimmed]
+        currentPageIndex = 0
+        readPages.removeAll()
+
+        // Force word tracking mode for director
+        let savedMode = NotchSettings.shared.listeningMode
+        NotchSettings.shared.listeningMode = .wordTracking
+
+        directorIsReading = true
+
+        overlayController.show(text: trimmed, hasNextPage: false) { [weak self] in
+            self?.directorIsReading = false
+            self?.directorServer.hideContent()
+            self?.externalDisplayController.dismiss()
+            self?.browserServer.hideContent()
+            // Restore listening mode
+            NotchSettings.shared.listeningMode = savedMode
+        }
+
+        // Feed director server with speech recognizer
+        let words = splitTextIntoWords(trimmed)
+        let totalCharCount = words.joined(separator: " ").count
+        directorServer.showContent(
+            speechRecognizer: overlayController.speechRecognizer,
+            words: words,
+            totalCharCount: totalCharCount
+        )
+
+        // Also show on external display & browser if configured
+        externalDisplayController.show(
+            speechRecognizer: overlayController.speechRecognizer,
+            words: words,
+            totalCharCount: totalCharCount,
+            hasNextPage: false
+        )
+        if browserServer.isRunning {
+            browserServer.showContent(
+                speechRecognizer: overlayController.speechRecognizer,
+                words: words,
+                totalCharCount: totalCharCount,
+                hasNextPage: false
+            )
+        }
+    }
+
+    func updateTextFromDirector(_ text: String, readCharCount: Int) {
+        guard directorIsReading else { return }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        pages = [trimmed]
+
+        // Preserve read progress: only update unread portion
+        let preservedCharCount = overlayController.speechRecognizer.recognizedCharCount
+
+        let words = splitTextIntoWords(trimmed)
+        let totalCharCount = words.joined(separator: " ").count
+
+        // Update overlay content without resetting speech progress
+        overlayController.overlayContent.words = words
+        overlayController.overlayContent.totalCharCount = totalCharCount
+        overlayController.overlayContent.hasNextPage = false
+
+        // Update the speech recognizer with new full text but keep char count
+        overlayController.speechRecognizer.updateText(trimmed, preservingCharCount: preservedCharCount)
+
+        // Update director server
+        directorServer.updateContent(words: words, totalCharCount: totalCharCount)
+
+        // Update external display & browser
+        externalDisplayController.overlayContent.words = words
+        externalDisplayController.overlayContent.totalCharCount = totalCharCount
+        if browserServer.isRunning {
+            browserServer.updateContent(
+                words: words,
+                totalCharCount: totalCharCount,
+                hasNextPage: false
+            )
+        }
+    }
+
+    func stopDirectorReading() {
+        guard directorIsReading else { return }
+        overlayController.dismiss()
+        directorIsReading = false
     }
 
     // macOS Services handler

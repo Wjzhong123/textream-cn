@@ -385,6 +385,17 @@ class NotchSettings {
         didSet { UserDefaults.standard.set(Int(browserServerPort), forKey: "browserServerPort") }
     }
 
+    var directorModeEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(directorModeEnabled, forKey: "directorModeEnabled")
+            TextreamService.shared.updateDirectorServer()
+        }
+    }
+
+    var directorServerPort: UInt16 {
+        didSet { UserDefaults.standard.set(Int(directorServerPort), forKey: "directorServerPort") }
+    }
+
     var font: NSFont {
         fontFamilyPreset.font(size: fontSizePreset.pointSize)
     }
@@ -433,5 +444,8 @@ class NotchSettings {
         self.browserServerEnabled = UserDefaults.standard.object(forKey: "browserServerEnabled") as? Bool ?? false
         let savedPort = UserDefaults.standard.integer(forKey: "browserServerPort")
         self.browserServerPort = savedPort > 0 ? UInt16(savedPort) : 7373
+        self.directorModeEnabled = UserDefaults.standard.object(forKey: "directorModeEnabled") as? Bool ?? false
+        let savedDirectorPort = UserDefaults.standard.integer(forKey: "directorServerPort")
+        self.directorServerPort = savedDirectorPort > 0 ? UInt16(savedDirectorPort) : 7575
     }
 }

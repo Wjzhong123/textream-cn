@@ -7,6 +7,7 @@
 
 import SwiftUI
 import UniformTypeIdentifiers
+import CoreImage.CIFilterBuiltins
 
 struct ContentView: View {
     @ObservedObject private var service = TextreamService.shared
@@ -331,9 +332,83 @@ Happy presenting! [wave]
         }
     }
 
+    private var directorOverlay: some View {
+        VStack(spacing: 20) {
+            Spacer()
+
+            Image(systemName: "megaphone.fill")
+                .font(.system(size: 40, weight: .light))
+                .foregroundStyle(.secondary)
+
+            Text("Director Mode")
+                .font(.system(size: 22, weight: .bold))
+
+            Text(service.directorIsReading ? "Reading from director…" : "Waiting for director to send script…")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+
+            if let ip = BrowserServer.localIPAddress() {
+                let url = "http://\(ip):\(NotchSettings.shared.directorServerPort)"
+
+                if let qrImage = generateDirectorQRCode(from: url) {
+                    Image(nsImage: qrImage)
+                        .interpolation(.none)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 140, height: 140)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+
+                HStack(spacing: 8) {
+                    Text(url)
+                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(Color.accentColor)
+                        .textSelection(.enabled)
+
+                    Button {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString(url, forType: .string)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            Button {
+                showSettings = true
+            } label: {
+                Text("Open Settings")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .padding(.bottom, 20)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func generateDirectorQRCode(from string: String) -> NSImage? {
+        let context = CIContext()
+        let filter = CIFilter.qrCodeGenerator()
+        filter.message = Data(string.utf8)
+        filter.correctionLevel = "M"
+        guard let ciImage = filter.outputImage else { return nil }
+        let scale = 10.0
+        let scaled = ciImage.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        guard let cgImage = context.createCGImage(scaled, from: scaled.extent) else { return nil }
+        return NSImage(cgImage: cgImage, size: NSSize(width: scaled.extent.width, height: scaled.extent.height))
+    }
+
     var body: some View {
         Group {
-            if service.pages.count > 1 {
+            if NotchSettings.shared.directorModeEnabled {
+                directorOverlay
+            } else if service.pages.count > 1 {
                 NavigationSplitView {
                     pageSidebar
                 } detail: {

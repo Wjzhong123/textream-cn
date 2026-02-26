@@ -41,6 +41,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Start browser server if enabled
         TextreamService.shared.updateBrowserServer()
 
+        // Start director server if enabled
+        TextreamService.shared.updateDirectorServer()
+
         // Set window delegate to intercept close, disable tabs and fullscreen
         DispatchQueue.main.async {
             for window in NSApp.windows where !(window is NSPanel) {
