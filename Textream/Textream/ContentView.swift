@@ -53,49 +53,39 @@ Happy presenting! [wave]
         service.pages.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
-    var body: some View {
+    private var mainContent: some View {
         ZStack {
-            HStack(spacing: 0) {
-                // Sidebar with page squares
-                if service.pages.count > 1 {
-                    pageSidebar
-                }
+            HighlightingTextEditor(
+                text: currentText,
+                font: .systemFont(ofSize: 16, weight: .regular).rounded
+            )
+            .padding(20)
 
-                // Main content area
-                ZStack {
-                    TextEditor(text: currentText)
-                        .font(.system(size: 16, weight: .regular, design: .rounded))
-                        .scrollContentBackground(.hidden)
-                        .padding(20)
-                        .focused($isTextFocused)
-
-                    // Floating action button (bottom-right)
-                    VStack {
-                        Spacer()
-                        HStack {
-                            Spacer()
-                            Button {
-                                if isRunning {
-                                    stop()
-                                } else {
-                                    run()
-                                }
-                            } label: {
-                                Image(systemName: isRunning ? "stop.fill" : "play.fill")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(.white)
-                                    .frame(width: 44, height: 44)
-                                    .background(isRunning ? Color.red : Color.accentColor)
-                                    .clipShape(Circle())
-                                    .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(!isRunning && !hasAnyContent)
-                            .opacity(!hasAnyContent && !isRunning ? 0.4 : 1)
+            // Floating action button (bottom-right)
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button {
+                        if isRunning {
+                            stop()
+                        } else {
+                            run()
                         }
-                        .padding(20)
+                    } label: {
+                        Image(systemName: isRunning ? "stop.fill" : "play.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 44, height: 44)
+                            .background(isRunning ? Color.red : Color.accentColor)
+                            .clipShape(Circle())
+                            .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
                     }
+                    .buttonStyle(.plain)
+                    .disabled(!isRunning && !hasAnyContent)
+                    .opacity(!hasAnyContent && !isRunning ? 0.4 : 1)
                 }
+                .padding(20)
             }
 
             // Drop zone overlay — sits on top so TextEditor doesn't steal the drop
@@ -151,6 +141,21 @@ Happy presenting! [wave]
                 }
                 .allowsHitTesting(isDroppingPresentation)
         }
+    }
+
+    var body: some View {
+        Group {
+            if service.pages.count > 1 {
+                NavigationSplitView {
+                    pageSidebar
+                } detail: {
+                    mainContent
+                }
+                .navigationSplitViewColumnWidth(min: 160, ideal: 200, max: 260)
+            } else {
+                mainContent
+            }
+        }
         .alert(dropAlertTitle, isPresented: Binding(get: { dropError != nil }, set: { if !$0 { dropError = nil } })) {
             Button("OK") { dropError = nil }
         } message: {
@@ -161,24 +166,22 @@ Happy presenting! [wave]
         .toolbar {
             ToolbarItem(placement: .automatic) {
                 HStack(spacing: 8) {
-                    if let fileURL = service.currentFileURL {
-                        Button {
-                            service.openFile()
-                        } label: {
-                            HStack(spacing: 4) {
-                                if service.pages != service.savedPages {
-                                    Circle()
-                                        .fill(.orange)
-                                        .frame(width: 6, height: 6)
-                                }
-                                Text(fileURL.deletingPathExtension().lastPathComponent)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .lineLimit(1)
+                    Button {
+                        service.openFile()
+                    } label: {
+                        HStack(spacing: 4) {
+                            if service.currentFileURL != nil && service.pages != service.savedPages {
+                                Circle()
+                                    .fill(.orange)
+                                    .frame(width: 6, height: 6)
                             }
-                            .foregroundStyle(.tertiary)
+                            Text(service.currentFileURL?.deletingPathExtension().lastPathComponent ?? "Untitled")
+                                .font(.system(size: 11, weight: .medium))
+                                .lineLimit(1)
                         }
-                        .buttonStyle(.plain)
+                        .foregroundStyle(.tertiary)
                     }
+                    .buttonStyle(.plain)
 
                     // Add page button in toolbar
                     Button {
@@ -213,6 +216,7 @@ Happy presenting! [wave]
                     }
                     .buttonStyle(.plain)
                 }
+                .padding(.horizontal, 8)
             }
         }
         .sheet(isPresented: $showSettings) {
@@ -254,73 +258,72 @@ Happy presenting! [wave]
 
     // MARK: - Page Sidebar
 
+    private func pagePreview(_ page: String) -> String {
+        let trimmed = page.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return "Empty" }
+        let words = trimmed.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
+        let preview = words.prefix(5).joined(separator: " ")
+        return preview.count > 30 ? String(preview.prefix(30)) + "…" : preview
+    }
+
+    private var sidebarSelection: Binding<Int?> {
+        Binding<Int?>(
+            get: { service.currentPageIndex },
+            set: { newValue in
+                if let index = newValue {
+                    withAnimation(.easeInOut(duration: 0.15)) {
+                        service.currentPageIndex = index
+                    }
+                }
+            }
+        )
+    }
+
     private var pageSidebar: some View {
-        VStack(spacing: 0) {
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 6) {
-                    ForEach(Array(service.pages.enumerated()), id: \.offset) { index, _ in
-                        let isRead = service.readPages.contains(index)
-                        let isCurrent = service.currentPageIndex == index
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.15)) {
-                                service.currentPageIndex = index
-                            }
+        List(selection: sidebarSelection) {
+            ForEach(Array(service.pages.enumerated()), id: \.offset) { index, page in
+                Label {
+                    Text(pagePreview(page))
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                } icon: {
+                    Text("\(index + 1)")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(.primary)
+                        .frame(width: 20, height: 20)
+                        .background(service.readPages.contains(index) ? Color.green.opacity(0.3) : Color.primary.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                }
+                .tag(index)
+                .contextMenu {
+                    if service.pages.count > 1 {
+                        Button(role: .destructive) {
+                            removePage(at: index)
                         } label: {
-                            HStack(spacing: 6) {
-                                Text("\(index + 1)")
-                                    .font(.system(size: 11, weight: isCurrent ? .bold : .medium, design: .monospaced))
-                                    .foregroundStyle(isCurrent ? .white : .primary)
-                                Spacer()
-                                if isRead && !isCurrent {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(.green)
-                                }
-                            }
-                            .padding(.horizontal, 8)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 30)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(isCurrent ? Color.accentColor : Color.primary.opacity(0.06))
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            if service.pages.count > 1 {
-                                Button(role: .destructive) {
-                                    removePage(at: index)
-                                } label: {
-                                    Label("Delete Page", systemImage: "trash")
-                                }
-                            }
+                            Label("Delete Page", systemImage: "trash")
                         }
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.top, 8)
             }
-
-            Divider().padding(.horizontal, 8)
-
+        }
+        .listStyle(.sidebar)
+        .safeAreaInset(edge: .bottom) {
             Button {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     service.pages.append("")
                     service.currentPageIndex = service.pages.count - 1
                 }
             } label: {
-                Image(systemName: "plus")
+                Label("Add Page", systemImage: "plus")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 30)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
             }
             .buttonStyle(.plain)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
         }
-        .frame(width: 68)
-        .background(Color.primary.opacity(0.03))
     }
 
     // MARK: - Actions

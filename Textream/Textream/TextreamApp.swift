@@ -65,8 +65,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        // Hide the window instead of closing it
-        sender.orderOut(nil)
+        if TextreamService.shared.hasUnsavedChanges {
+            guard TextreamService.shared.confirmDiscardIfNeeded() else { return false }
+        }
+        NSApp.terminate(nil)
         return false
     }
 
@@ -142,7 +144,7 @@ struct TextreamApp: App {
                 .keyboardShortcut(",", modifiers: .command)
             }
             CommandGroup(replacing: .newItem) {
-                Button("Open…") {
+                Button("Open File or Presentation…") {
                     TextreamService.shared.openFile()
                 }
                 .keyboardShortcut("o", modifiers: .command)
