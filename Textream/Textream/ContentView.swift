@@ -66,6 +66,7 @@ Happy presenting! [wave]
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
 
+        #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
             pill
                 .glassEffect(in: .capsule)
@@ -74,6 +75,11 @@ Happy presenting! [wave]
                 .background(.ultraThinMaterial, in: Capsule())
                 .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
         }
+        #else
+        pill
+            .background(.ultraThinMaterial, in: Capsule())
+            .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+        #endif
     }
 
     @State private var highlightClearTimer: Timer?
