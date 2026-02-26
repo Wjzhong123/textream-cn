@@ -21,6 +21,10 @@ struct HighlightingTextEditor: NSViewRepresentable {
     var isFocused: FocusState<Bool>.Binding?
     /// Range of newly dictated text to highlight with a bump effect
     var highlightRange: NSRange? = nil
+    /// One-shot: set caret to this position, then nilled out
+    @Binding var caretPosition: Int?
+    /// Continuously reported current caret position in the editor
+    @Binding var editorCaretPosition: Int
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -75,6 +79,16 @@ struct HighlightingTextEditor: NSViewRepresentable {
         if let range = highlightRange, range.location + range.length <= textView.string.count {
             context.coordinator.applyBumpHighlight(textView, range: range)
         }
+
+        // Move caret to requested position (one-shot)
+        if let pos = caretPosition, pos <= textView.string.count {
+            let caretRange = NSRange(location: pos, length: 0)
+            textView.setSelectedRange(caretRange)
+            textView.scrollRangeToVisible(caretRange)
+            DispatchQueue.main.async {
+                self.caretPosition = nil
+            }
+        }
     }
 
     class Coordinator: NSObject, NSTextViewDelegate {
@@ -94,6 +108,16 @@ struct HighlightingTextEditor: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
             applyHighlighting(textView)
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            let pos = textView.selectedRange().location
+            if parent.editorCaretPosition != pos {
+                DispatchQueue.main.async { [weak self] in
+                    self?.parent.editorCaretPosition = pos
+                }
+            }
         }
 
         private var bumpTimer: Timer?

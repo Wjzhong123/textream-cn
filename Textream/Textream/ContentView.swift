@@ -14,6 +14,8 @@ struct ContentView: View {
     @State private var isRecording = false
     @State private var dictation = DictationManager()
     @State private var dictationHighlightRange: NSRange? = nil
+    @State private var dictationCaretPosition: Int? = nil
+    @State private var editorCaretPosition: Int = 0
     @State private var isDroppingPresentation = false
     @State private var dropError: String?
     @State private var dropAlertTitle: String = "Import Error"
@@ -74,30 +76,105 @@ Happy presenting! [wave]
         }
     }
 
-    private func startRecording() {
-        // Capture the base text once so partial results replace (not append)
+    @State private var highlightClearTimer: Timer?
+
+    // Segment tracking: each recognition session is a "segment"
+    @State private var segmentStart: Int = 0
+    @State private var segmentLength: Int = 0
+    @State private var segmentNeedsSeparator: Bool = false
+    // How many chars of the raw recognition result to skip (already committed before cursor move)
+    @State private var spokenSkipOffset: Int = 0
+    @State private var lastRawSpokenLength: Int = 0
+
+    private func beginNewSegment() {
         let pageIndex = service.currentPageIndex
-        let baseText = service.pages[pageIndex]
-        let separator = baseText.isEmpty || baseText.hasSuffix(" ") || baseText.hasSuffix("\n") ? "" : " "
+        guard pageIndex < service.pages.count else { return }
+        let text = service.pages[pageIndex]
+        let caret = min(editorCaretPosition, text.count)
+
+        // Skip everything already recognized up to this point
+        spokenSkipOffset = lastRawSpokenLength
+
+        // Check if we need a space before the new segment
+        let charBefore = caret > 0 ? text[text.index(text.startIndex, offsetBy: caret - 1)] : "\n"
+        segmentNeedsSeparator = !(charBefore == " " || charBefore == "\n" || caret == 0)
+        segmentStart = caret
+        segmentLength = 0
+    }
+
+    private func startRecording() {
+        lastRawSpokenLength = 0
+        spokenSkipOffset = 0
+        beginNewSegment()
+
+        dictation.onNewSegment = { [self] in
+            // Recognition restarted — raw counter resets to 0
+            lastRawSpokenLength = 0
+            spokenSkipOffset = 0
+            beginNewSegment()
+        }
 
         dictation.onTextUpdate = { [self] spokenText in
+            lastRawSpokenLength = spokenText.count
+
+            // Only use the portion after the skip offset
+            let effectiveText: String
+            if spokenSkipOffset < spokenText.count {
+                effectiveText = String(spokenText.suffix(spokenText.count - spokenSkipOffset))
+            } else {
+                effectiveText = ""
+            }
+            guard !effectiveText.isEmpty else { return }
+
+            let pageIndex = service.currentPageIndex
             guard pageIndex < service.pages.count else { return }
-            let newText = baseText + separator + spokenText
-            service.pages[pageIndex] = newText
-            // Highlight the newly dictated portion
-            let start = baseText.count + separator.count
-            dictationHighlightRange = NSRange(location: start, length: spokenText.count)
+            var text = service.pages[pageIndex]
+
+            // Remove the old segment text
+            let safeStart = min(segmentStart, text.count)
+            let removeStart = text.index(text.startIndex, offsetBy: safeStart)
+            let safeLen = min(segmentLength, text.count - safeStart)
+            let removeEnd = text.index(removeStart, offsetBy: safeLen)
+            text.removeSubrange(removeStart..<removeEnd)
+
+            // Build the new segment content
+            let sep = segmentNeedsSeparator ? " " : ""
+            let newSegment = sep + effectiveText
+            text.insert(contentsOf: newSegment, at: text.index(text.startIndex, offsetBy: min(segmentStart, text.count)))
+
+            let prevLen = segmentLength
+            segmentLength = newSegment.count
+            service.pages[pageIndex] = text
+
+            // Highlight only the newly added characters
+            let newChars = segmentLength - prevLen
+            if newChars > 0 {
+                let highlightStart = segmentStart + prevLen
+                dictationHighlightRange = NSRange(location: highlightStart, length: newChars)
+            }
+
+            // Move caret to end of segment
+            dictationCaretPosition = segmentStart + segmentLength
+
+            // Clear highlight after 1s of silence
+            highlightClearTimer?.invalidate()
+            highlightClearTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { _ in
+                DispatchQueue.main.async {
+                    dictationHighlightRange = nil
+                }
+            }
         }
         dictation.start()
         isRecording = true
     }
 
     private func stopRecording() {
-        // Commit: keep whatever was recognized so far
-        let lastText = dictation.audioLevels // just to trigger observation
-        _ = lastText
+        highlightClearTimer?.invalidate()
+        highlightClearTimer = nil
+        dictationHighlightRange = nil
         dictation.stop()
         dictation.onTextUpdate = nil
+        dictation.onNewSegment = nil
         isRecording = false
     }
 
@@ -107,8 +184,18 @@ Happy presenting! [wave]
                 HighlightingTextEditor(
                     text: currentText,
                     font: .systemFont(ofSize: 16, weight: .regular).rounded,
-                    highlightRange: dictationHighlightRange
+                    highlightRange: dictationHighlightRange,
+                    caretPosition: $dictationCaretPosition,
+                    editorCaretPosition: $editorCaretPosition
                 )
+                .onChange(of: editorCaretPosition) { _, newPos in
+                    guard isRecording else { return }
+                    // If caret moved away from end of current segment, user clicked elsewhere
+                    let segmentEnd = segmentStart + segmentLength
+                    if newPos != segmentEnd {
+                        beginNewSegment()
+                    }
+                }
                 .padding(.horizontal, 20)
                 .padding(.top, 8)
                 .padding(.bottom, 8)

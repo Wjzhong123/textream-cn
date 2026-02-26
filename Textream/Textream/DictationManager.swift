@@ -16,8 +16,10 @@ class DictationManager {
     var audioLevels: [CGFloat] = Array(repeating: 0, count: 40)
     var error: String?
 
-    /// Called on main thread with the latest recognized text for the current session
+    /// Called on main thread with the latest recognized text for the current segment
     var onTextUpdate: ((String) -> Void)?
+    /// Called on main thread when a new recognition segment begins (after silence/restart)
+    var onNewSegment: (() -> Void)?
 
     private var speechRecognizer: SFSpeechRecognizer?
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -171,6 +173,9 @@ class DictationManager {
                 }
             }
         }
+
+        // Notify that a new recognition segment is starting
+        onNewSegment?()
 
         let currentGeneration = sessionGeneration
         recognitionTask = speechRecognizer.recognitionTask(with: recognitionRequest) { [weak self] result, error in
