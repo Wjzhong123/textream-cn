@@ -19,6 +19,8 @@ struct HighlightingTextEditor: NSViewRepresentable {
     @Binding var text: String
     var font: NSFont = .systemFont(ofSize: 16, weight: .regular)
     var isFocused: FocusState<Bool>.Binding?
+    /// Range of newly dictated text to highlight with a bump effect
+    var highlightRange: NSRange? = nil
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -68,6 +70,11 @@ struct HighlightingTextEditor: NSViewRepresentable {
             textView.selectedRanges = selectedRanges
             context.coordinator.applyHighlighting(textView)
         }
+
+        // Apply bump highlight on newly dictated range
+        if let range = highlightRange, range.location + range.length <= textView.string.count {
+            context.coordinator.applyBumpHighlight(textView, range: range)
+        }
     }
 
     class Coordinator: NSObject, NSTextViewDelegate {
@@ -87,6 +94,25 @@ struct HighlightingTextEditor: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
             applyHighlighting(textView)
+        }
+
+        private var bumpTimer: Timer?
+
+        func applyBumpHighlight(_ textView: NSTextView, range: NSRange) {
+            guard let textStorage = textView.textStorage else { return }
+            guard range.length > 0, range.location + range.length <= textStorage.length else { return }
+
+            let bumpColor = NSColor.controlAccentColor.withAlphaComponent(0.15)
+            textStorage.beginEditing()
+            textStorage.addAttribute(.backgroundColor, value: bumpColor, range: range)
+            textStorage.endEditing()
+
+            // Fade out after a short delay
+            bumpTimer?.invalidate()
+            bumpTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: false) { [weak self, weak textView] _ in
+                guard let self, let textView else { return }
+                self.applyHighlighting(textView)
+            }
         }
 
         func applyHighlighting(_ textView: NSTextView) {

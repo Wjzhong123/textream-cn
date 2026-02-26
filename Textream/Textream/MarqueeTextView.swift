@@ -575,9 +575,17 @@ struct AudioWaveformProgressView: View {
 // Keep the old one for backward compat
 struct AudioWaveformView: View {
     let levels: [CGFloat]
+    var color: Color = .white
 
     var body: some View {
-        AudioWaveformProgressView(levels: levels, progress: 0)
+        HStack(alignment: .center, spacing: 2) {
+            ForEach(Array(levels.enumerated()), id: \.offset) { _, level in
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(color.opacity(0.4 + Double(level) * 0.6))
+                    .frame(width: 3, height: max(3, level * 28 + 3))
+                    .animation(.easeOut(duration: 0.08), value: level)
+            }
+        }
     }
 }
 

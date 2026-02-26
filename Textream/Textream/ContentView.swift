@@ -11,6 +11,9 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @ObservedObject private var service = TextreamService.shared
     @State private var isRunning = false
+    @State private var isRecording = false
+    @State private var dictation = DictationManager()
+    @State private var dictationHighlightRange: NSRange? = nil
     @State private var isDroppingPresentation = false
     @State private var dropError: String?
     @State private var dropAlertTitle: String = "Import Error"
@@ -53,43 +56,134 @@ Happy presenting! [wave]
         service.pages.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
+    @ViewBuilder
+    private var waveformPill: some View {
+        let pill = AudioWaveformView(levels: dictation.audioLevels, color: .red)
+            .frame(height: 34)
+            .frame(maxWidth: 240)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+
+        if #available(macOS 26.0, *) {
+            pill
+                .glassEffect(in: .capsule)
+        } else {
+            pill
+                .background(.ultraThinMaterial, in: Capsule())
+                .shadow(color: .black.opacity(0.15), radius: 12, y: 4)
+        }
+    }
+
+    private func startRecording() {
+        // Capture the base text once so partial results replace (not append)
+        let pageIndex = service.currentPageIndex
+        let baseText = service.pages[pageIndex]
+        let separator = baseText.isEmpty || baseText.hasSuffix(" ") || baseText.hasSuffix("\n") ? "" : " "
+
+        dictation.onTextUpdate = { [self] spokenText in
+            guard pageIndex < service.pages.count else { return }
+            let newText = baseText + separator + spokenText
+            service.pages[pageIndex] = newText
+            // Highlight the newly dictated portion
+            let start = baseText.count + separator.count
+            dictationHighlightRange = NSRange(location: start, length: spokenText.count)
+        }
+        dictation.start()
+        isRecording = true
+    }
+
+    private func stopRecording() {
+        // Commit: keep whatever was recognized so far
+        let lastText = dictation.audioLevels // just to trigger observation
+        _ = lastText
+        dictation.stop()
+        dictation.onTextUpdate = nil
+        isRecording = false
+    }
+
     private var mainContent: some View {
-        ZStack {
-            HighlightingTextEditor(
-                text: currentText,
-                font: .systemFont(ofSize: 16, weight: .regular).rounded
-            )
-            .padding(20)
+        VStack(spacing: 0) {
+            ZStack {
+                HighlightingTextEditor(
+                    text: currentText,
+                    font: .systemFont(ofSize: 16, weight: .regular).rounded,
+                    highlightRange: dictationHighlightRange
+                )
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
+                .mask(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .white, location: 0.03),
+                            .init(color: .white, location: 0.93),
+                            .init(color: .clear, location: 1.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
 
-            // Floating action button (bottom-right)
-            VStack {
-                Spacer()
-                HStack {
+                // Bottom bar
+                VStack {
                     Spacer()
-                    Button {
-                        if isRunning {
-                            stop()
-                        } else {
-                            run()
+                    ZStack {
+                        // Waveform pill centered to full width
+                        if isRecording {
+                            waveformPill
+                                .transition(.scale(scale: 0.8).combined(with: .opacity))
                         }
-                    } label: {
-                        Image(systemName: isRunning ? "stop.fill" : "play.fill")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 44, height: 44)
-                            .background(isRunning ? Color.red : Color.accentColor)
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(!isRunning && !hasAnyContent)
-                    .opacity(!hasAnyContent && !isRunning ? 0.4 : 1)
-                }
-                .padding(20)
-            }
 
-            // Drop zone overlay — sits on top so TextEditor doesn't steal the drop
-            if isDroppingPresentation {
+                        // Buttons pinned right
+                        HStack(spacing: 10) {
+                            Spacer()
+
+                            Button {
+                                if isRecording {
+                                    stopRecording()
+                                } else {
+                                    startRecording()
+                                }
+                            } label: {
+                                Image(systemName: isRecording ? "pause.fill" : "mic.fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 44, height: 44)
+                                    .background(isRecording ? Color.orange : Color.red)
+                                    .clipShape(Circle())
+                                    .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(isRunning)
+                            .opacity(isRunning ? 0.4 : 1)
+
+                            Button {
+                                if isRunning {
+                                    stop()
+                                } else {
+                                    run()
+                                }
+                            } label: {
+                                Image(systemName: isRunning ? "stop.fill" : "play.fill")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(.white)
+                                    .frame(width: 44, height: 44)
+                                    .background(isRunning ? Color.red : Color.accentColor)
+                                    .clipShape(Circle())
+                                    .shadow(color: .black.opacity(0.2), radius: 8, y: 4)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled((!isRunning && !hasAnyContent) || isRecording)
+                            .opacity((!hasAnyContent && !isRunning) || isRecording ? 0.4 : 1)
+                        }
+                    }
+                    .padding(20)
+                }
+                .animation(.easeInOut(duration: 0.25), value: isRecording)
+
+                // Drop zone overlay — sits on top so TextEditor doesn't steal the drop
+                if isDroppingPresentation {
                 VStack(spacing: 8) {
                     Image(systemName: "doc.text")
                         .font(.system(size: 28, weight: .light))
@@ -140,6 +234,7 @@ Happy presenting! [wave]
                     return true
                 }
                 .allowsHitTesting(isDroppingPresentation)
+            }
         }
     }
 
@@ -271,8 +366,10 @@ Happy presenting! [wave]
             get: { service.currentPageIndex },
             set: { newValue in
                 if let index = newValue {
-                    withAnimation(.easeInOut(duration: 0.15)) {
-                        service.currentPageIndex = index
+                    DispatchQueue.main.async {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            service.currentPageIndex = index
+                        }
                     }
                 }
             }
