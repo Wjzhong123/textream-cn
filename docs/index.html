@@ -1751,6 +1751,444 @@
       color: var(--text2);
     }
 
+    /* Director Mode Section */
+    .director-section {
+      padding: 40px 0 80px;
+    }
+
+    .director-section h2 {
+      text-align: center;
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 12px;
+    }
+
+    .director-section .section-sub {
+      text-align: center;
+      font-size: 16px;
+      color: var(--text2);
+      margin-bottom: 48px;
+    }
+
+    .director-demo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .director-demo-arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .director-demo-arrow svg {
+      width: 48px;
+      height: 24px;
+      stroke: var(--accent2);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.5;
+    }
+
+    .director-demo-arrow span {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text3);
+      white-space: nowrap;
+    }
+
+    /* Phone frame */
+    .director-phone {
+      width: 200px;
+      min-width: 200px;
+      aspect-ratio: 9 / 16;
+      background: linear-gradient(180deg, #1a1a1e 0%, #111113 100%);
+      border-radius: 28px;
+      border: 2px solid rgba(255,255,255,0.12);
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .director-phone .phone-notch {
+      width: 60px;
+      height: 20px;
+      background: #000;
+      border-radius: 0 0 14px 14px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 5;
+    }
+
+    .director-phone .phone-home {
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 48px;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.2);
+      z-index: 5;
+    }
+
+    .director-phone-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 4px 10px 16px;
+      overflow: hidden;
+    }
+
+    .dp-header {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 0 6px;
+      flex-shrink: 0;
+    }
+
+    .dp-header .dp-icon {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      background: linear-gradient(135deg, var(--accent1), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dp-header .dp-icon svg {
+      width: 8px;
+      height: 8px;
+      fill: #fff;
+      stroke: none;
+    }
+
+    .dp-header span {
+      font-size: 9px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.02em;
+    }
+
+    .dp-editor {
+      flex: 1;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 8px;
+      padding: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .dp-line {
+      height: 5px;
+      border-radius: 2px;
+      margin-bottom: 5px;
+      transition: background 0.3s ease, width 0.4s ease;
+    }
+
+    .dp-line.typing {
+      animation: dpType 0.6s ease-out forwards;
+    }
+
+    @keyframes dpType {
+      0% { width: 0; }
+      100% { width: var(--tw); }
+    }
+
+    .dp-line.read {
+      background: rgba(250, 204, 21, 0.25) !important;
+    }
+
+    .dp-line.current {
+      position: relative;
+    }
+
+    .dp-line.current::after {
+      content: '';
+      position: absolute;
+      top: -1px;
+      right: -1px;
+      width: 2px;
+      height: 7px;
+      background: #facc15;
+      border-radius: 1px;
+      animation: dpBlink 0.8s step-end infinite;
+    }
+
+    @keyframes dpBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .dp-divider {
+      height: 1px;
+      background: linear-gradient(to right, #facc15, transparent);
+      margin: 2px 0 4px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .dp-divider.visible { opacity: 1; }
+
+    .dp-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 0 0;
+      flex-shrink: 0;
+    }
+
+    .dp-go-btn {
+      height: 22px;
+      border-radius: 6px;
+      padding: 0 12px;
+      font-size: 8px;
+      font-weight: 700;
+      color: #fff;
+      background: #22c55e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s ease;
+    }
+
+    .dp-go-btn.stop { background: #ef4444; }
+
+    .dp-waveform {
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      height: 14px;
+      flex: 1;
+      justify-content: flex-end;
+    }
+
+    .dp-waveform .dp-bar {
+      width: 2px;
+      border-radius: 1px;
+      min-height: 2px;
+      background: rgba(255,255,255,0.08);
+      transition: height 0.08s ease, background 0.15s ease;
+      align-self: center;
+    }
+
+    .dp-waveform .dp-bar.active {
+      background: rgba(250, 204, 21, 0.6);
+    }
+
+    .dp-mic {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .dp-mic.on { background: rgba(250, 204, 21, 0.15); }
+
+    .dp-mic svg {
+      width: 7px;
+      height: 7px;
+      fill: rgba(255, 214, 10, 0.7);
+    }
+
+    /* Mac mini frame for director */
+    .director-mac {
+      width: 280px;
+      min-width: 240px;
+      aspect-ratio: 16 / 10;
+      background: linear-gradient(180deg, #1a1a1e 0%, #111113 100%);
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+      box-shadow: 0 16px 50px rgba(0,0,0,0.4);
+      position: relative;
+    }
+
+    .dm-camera {
+      position: absolute;
+      top: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+    }
+
+    .dm-camera .lens {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #3a3a3e 0%, #1a1a1c 60%, #0a0a0c 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .dm-desktop {
+      position: absolute;
+      inset: 0;
+      background: #202124;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dm-desktop-lines {
+      width: 70%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .dm-desktop-lines div {
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .dm-desktop-lines div:nth-child(1) { width: 60%; }
+    .dm-desktop-lines div:nth-child(2) { width: 80%; }
+    .dm-desktop-lines div:nth-child(3) { width: 50%; }
+    .dm-desktop-lines div:nth-child(4) { width: 70%; }
+
+    .dm-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      z-index: 5;
+    }
+
+    .dm-overlay.visible { opacity: 1; }
+
+    .dm-overlay .dm-qr {
+      width: 48px;
+      height: 48px;
+      background: #fff;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .dm-overlay .dm-qr svg {
+      width: 36px;
+      height: 36px;
+      fill: #000;
+    }
+
+    .dm-overlay span {
+      font-size: 7px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* Notch on the director mac */
+    .dm-notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      overflow: hidden;
+      transition: width 0.5s cubic-bezier(0.4,0,0.2,1), height 0.5s cubic-bezier(0.4,0,0.2,1);
+    }
+
+    .dm-notch svg.dm-notch-shape {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .dm-notch-words {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2px 3px;
+      padding: 14px 10px 4px;
+      height: 100%;
+      overflow: hidden;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 78%, transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0%, #000 16%, #000 78%, transparent 100%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .dm-notch-words.visible { opacity: 1; }
+
+    .dm-notch-words span {
+      font-size: 7px;
+      font-weight: 600;
+      color: rgba(255,255,255,1);
+      transition: color 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .dm-notch-words span.dm-read { color: rgba(255,255,255,0.3); }
+    .dm-notch-words span.dm-current { color: rgba(255,255,255,0.6); text-decoration: underline; text-underline-offset: 2px; }
+
+    .director-labels {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      margin-top: 20px;
+    }
+
+    .director-labels .dl-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .director-labels .dl-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .director-labels .dl-item span {
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .director-footer {
+      text-align: center;
+      margin-top: 32px;
+    }
+
+    .director-footer p {
+      font-size: 14px;
+      color: var(--text3);
+      line-height: 1.7;
+    }
+
+    .director-footer strong {
+      color: var(--text2);
+    }
+
     /* Responsive */
     @media (max-width: 600px) {
       .hero { padding: 60px 0 30px; }
@@ -1766,6 +2204,11 @@
       .fs-notch-words { padding: 20px 18px 8px; gap: 3px 5px; }
       .features-list { grid-template-columns: 1fr; }
       .feat-item:nth-child(odd) { border-right: none; }
+      .director-section h2 { font-size: 26px; }
+      .director-demo { flex-direction: column; gap: 24px; }
+      .director-demo-arrow { transform: rotate(90deg); }
+      .director-phone { width: 180px; min-width: 180px; }
+      .director-mac { width: 100%; min-width: unset; }
     }
   </style>
 </head>
@@ -2578,6 +3021,10 @@
           <div class="feat-text"><h3>Remote Connection</h3><p>View your teleprompter on any device — phone, tablet, or another computer. Scan a QR code, open in any browser. Real-time sync over your local network.</p></div>
         </div>
         <div class="feat-item">
+          <div class="feat-dot"><svg viewBox="0 0 24 24"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg></div>
+          <div class="feat-text"><h3>Director Mode</h3><p>Let someone else control your teleprompter remotely. A director writes and pushes scripts from any browser. Read text locks, unread stays editable.</p></div>
+        </div>
+        <div class="feat-item">
           <div class="feat-dot"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
           <div class="feat-text"><h3>Live Voice Waveform</h3><p>Real-time waveform and progress bar show your voice activity so you always know the mic is working.</p></div>
         </div>
@@ -2623,6 +3070,260 @@
         </div>
       </div>
     </section>
+
+    <!-- Director Mode -->
+    <section class="director-section">
+      <h2>Hand the script to a director</h2>
+      <p class="section-sub">Someone else writes. You read. The teleprompter follows along in real time.</p>
+      <div class="director-demo">
+        <!-- Phone: Director UI -->
+        <div class="director-phone" id="dirPhone">
+          <div class="phone-notch"></div>
+          <div class="phone-home"></div>
+          <div class="director-phone-content">
+            <div class="dp-header">
+              <div class="dp-icon"><svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+              <span>Textream Director</span>
+            </div>
+            <div class="dp-editor" id="dpEditor"></div>
+            <div class="dp-divider" id="dpDivider"></div>
+            <div class="dp-controls">
+              <div class="dp-go-btn" id="dpGoBtn">GO</div>
+              <div class="dp-waveform" id="dpWaveform"></div>
+              <div class="dp-mic" id="dpMic"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/></svg></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Arrow -->
+        <div class="director-demo-arrow">
+          <svg viewBox="0 0 48 24"><line x1="4" y1="12" x2="40" y2="12"/><polyline points="34 6 40 12 34 18"/></svg>
+          <span>Wi-Fi</span>
+        </div>
+
+        <!-- Mac: Notch overlay -->
+        <div class="director-mac" id="dirMac">
+          <div class="dm-camera"><div class="lens"></div></div>
+          <div class="dm-desktop">
+            <div class="dm-desktop-lines"><div></div><div></div><div></div><div></div></div>
+          </div>
+          <div class="dm-overlay visible" id="dmOverlay">
+            <div class="dm-qr">
+              <svg viewBox="0 0 24 24"><rect x="2" y="2" width="8" height="8" rx="1" fill="#000"/><rect x="14" y="2" width="8" height="8" rx="1" fill="#000"/><rect x="2" y="14" width="8" height="8" rx="1" fill="#000"/><rect x="4" y="4" width="4" height="4" rx="0.5" fill="#fff"/><rect x="16" y="4" width="4" height="4" rx="0.5" fill="#fff"/><rect x="4" y="16" width="4" height="4" rx="0.5" fill="#fff"/><rect x="14" y="14" width="3" height="3" fill="#000"/><rect x="19" y="14" width="3" height="3" fill="#000"/><rect x="14" y="19" width="3" height="3" fill="#000"/><rect x="19" y="19" width="3" height="3" fill="#000"/></svg>
+            </div>
+            <span>Director Mode</span>
+          </div>
+          <div class="dm-notch" id="dmNotch">
+            <svg class="dm-notch-shape" id="dmNotchSvg" preserveAspectRatio="none"><path id="dmNotchPath" fill="#000"/></svg>
+            <div class="dm-notch-words" id="dmNotchWords"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="director-labels">
+        <div class="dl-item"><div class="dl-dot" style="background:var(--accent2);box-shadow:0 0 4px rgba(79,139,255,0.5)"></div><span style="color:var(--accent2)">Director's Phone</span></div>
+        <div class="dl-item"><div class="dl-dot" style="background:#facc15;box-shadow:0 0 4px rgba(250,204,21,0.5)"></div><span style="color:rgba(250,204,21,0.7)">Your Mac</span></div>
+      </div>
+
+      <div class="director-footer">
+        <p><strong>Enable in Settings &rarr; Director</strong> &mdash; scan the QR code from any phone or tablet &mdash; type a script, hit Go.<br>Word tracking starts automatically. Read text locks. Unread text stays editable.</p>
+      </div>
+    </section>
+
+    <script>
+    (function() {
+      var editor = document.getElementById('dpEditor');
+      var goBtn = document.getElementById('dpGoBtn');
+      var divider = document.getElementById('dpDivider');
+      var waveform = document.getElementById('dpWaveform');
+      var mic = document.getElementById('dpMic');
+      var overlay = document.getElementById('dmOverlay');
+      var notch = document.getElementById('dmNotch');
+      var notchSvg = document.getElementById('dmNotchSvg');
+      var notchPath = document.getElementById('dmNotchPath');
+      var notchWords = document.getElementById('dmNotchWords');
+
+      var lineWidths = ['85%','70%','90%','60%','80%','75%','65%','88%'];
+      var lineColors = ['rgba(255,255,255,0.12)','rgba(255,255,255,0.10)','rgba(255,255,255,0.11)','rgba(255,255,255,0.09)','rgba(255,255,255,0.12)','rgba(255,255,255,0.10)','rgba(255,255,255,0.11)','rgba(255,255,255,0.09)'];
+      var scriptWords = 'Welcome everyone to today\'s live stream We have some exciting announcements to share with you First let me tell you about our new product launch'.split(' ');
+
+      // Build waveform bars
+      for (var i = 0; i < 20; i++) {
+        var bar = document.createElement('div');
+        bar.className = 'dp-bar';
+        bar.style.height = '2px';
+        waveform.appendChild(bar);
+      }
+
+      // Notch shape helper
+      function notchShapePath(w, h, t, br) {
+        return 'M 0,0 Q '+t+',0 '+t+','+t+' L '+t+','+(h-br)+' Q '+t+','+h+' '+(t+br)+','+h+' L '+(w-t-br)+','+h+' Q '+(w-t)+','+h+' '+(w-t)+','+(h-br)+' L '+(w-t)+','+t+' Q '+(w-t)+',0 '+w+',0 Z';
+      }
+
+      var collW = 60, collH = 12, collT = 3, collBR = 4;
+      var expW = 180, expH = 80, expT = 7, expBR = 8;
+
+      function setNotchSize(w, h, t, br) {
+        notch.style.width = w + 'px';
+        notch.style.height = h + 'px';
+        notchSvg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        notchPath.setAttribute('d', notchShapePath(w, h, t, br));
+      }
+
+      function animateNotch(fromW, fromH, fromT, fromBR, toW, toH, toT, toBR, dur, cb) {
+        var t0 = performance.now();
+        function step(now) {
+          var p = Math.min((now - t0) / dur, 1);
+          var ease = p < 0.5 ? 4*p*p*p : 1 - Math.pow(-2*p+2,3)/2;
+          setNotchSize(
+            fromW + (toW-fromW)*ease,
+            fromH + (toH-fromH)*ease,
+            fromT + (toT-fromT)*ease,
+            fromBR + (toBR-fromBR)*ease
+          );
+          if (p < 1) requestAnimationFrame(step);
+          else if (cb) cb();
+        }
+        requestAnimationFrame(step);
+      }
+
+      // Build notch words
+      function buildNotchWords() {
+        notchWords.innerHTML = '';
+        scriptWords.forEach(function(w) {
+          var s = document.createElement('span');
+          s.textContent = w;
+          notchWords.appendChild(s);
+        });
+      }
+
+      var waveInterval;
+
+      function startWave() {
+        var bars = waveform.querySelectorAll('.dp-bar');
+        waveInterval = setInterval(function() {
+          bars.forEach(function(bar) {
+            bar.style.height = Math.max(2, Math.random() * 12) + 'px';
+            bar.classList.add('active');
+          });
+        }, 100);
+      }
+
+      function stopWave() {
+        clearInterval(waveInterval);
+        waveform.querySelectorAll('.dp-bar').forEach(function(bar) {
+          bar.style.height = '2px';
+          bar.classList.remove('active');
+        });
+      }
+
+      function runDirectorCycle() {
+        // Reset
+        editor.innerHTML = '';
+        goBtn.textContent = 'GO';
+        goBtn.classList.remove('stop');
+        divider.classList.remove('visible');
+        overlay.classList.add('visible');
+        mic.classList.remove('on');
+        notchWords.classList.remove('visible');
+        setNotchSize(collW, collH, collT, collBR);
+        buildNotchWords();
+        stopWave();
+
+        // Phase 1: Type lines (simulated)
+        var typeDelay = 400;
+        lineWidths.forEach(function(w, i) {
+          setTimeout(function() {
+            var line = document.createElement('div');
+            line.className = 'dp-line typing';
+            line.style.setProperty('--tw', w);
+            line.style.background = lineColors[i % lineColors.length];
+            line.style.width = '0';
+            editor.appendChild(line);
+          }, typeDelay + i * 300);
+        });
+
+        // Phase 2: Press Go
+        var goTime = typeDelay + lineWidths.length * 300 + 500;
+        setTimeout(function() {
+          goBtn.textContent = 'STOP';
+          goBtn.classList.add('stop');
+          overlay.classList.remove('visible');
+          mic.classList.add('on');
+
+          // Expand notch
+          animateNotch(collW, collH, collT, collBR, expW, expH, expT, expBR, 500, function() {
+            notchWords.classList.add('visible');
+          });
+
+          startWave();
+        }, goTime);
+
+        // Phase 3: Highlight lines + notch words
+        var readTime = goTime + 800;
+        var lines = [];
+        var totalLines = lineWidths.length;
+        var wordPerLine = Math.ceil(scriptWords.length / totalLines);
+
+        for (var li = 0; li < totalLines; li++) {
+          (function(idx) {
+            setTimeout(function() {
+              lines = editor.querySelectorAll('.dp-line');
+              // Mark previous lines as read
+              for (var j = 0; j < idx; j++) {
+                if (lines[j]) lines[j].classList.add('read');
+                if (lines[j]) lines[j].classList.remove('current');
+              }
+              // Current line
+              if (lines[idx]) {
+                lines[idx].classList.add('current');
+                divider.classList.add('visible');
+              }
+
+              // Notch words
+              var notchSpans = notchWords.querySelectorAll('span');
+              var wordIdx = idx * wordPerLine;
+              for (var w = 0; w < notchSpans.length; w++) {
+                if (w < wordIdx) {
+                  notchSpans[w].className = 'dm-read';
+                } else if (w === wordIdx) {
+                  notchSpans[w].className = 'dm-current';
+                } else {
+                  notchSpans[w].className = '';
+                }
+              }
+            }, readTime + idx * 600);
+          })(li);
+        }
+
+        // Phase 4: Done — collapse
+        var doneTime = readTime + totalLines * 600 + 800;
+        setTimeout(function() {
+          stopWave();
+          mic.classList.remove('on');
+          notchWords.classList.remove('visible');
+          divider.classList.remove('visible');
+
+          // Mark all read
+          var allLines = editor.querySelectorAll('.dp-line');
+          allLines.forEach(function(l) { l.classList.add('read'); l.classList.remove('current'); });
+
+          animateNotch(expW, expH, expT, expBR, collW, collH, collT, collBR, 400, function() {
+            overlay.classList.add('visible');
+          });
+
+          goBtn.textContent = 'GO';
+          goBtn.classList.remove('stop');
+        }, doneTime);
+
+        // Phase 5: Loop
+        setTimeout(function() { runDirectorCycle(); }, doneTime + 2000);
+      }
+
+      setNotchSize(collW, collH, collT, collBR);
+      runDirectorCycle();
+    })();
+    </script>
 
     <!-- How it works -->
     <section class="how-it-works">

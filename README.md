@@ -123,6 +123,19 @@ View your teleprompter on **any device** — phone, tablet, or another computer 
 - **Configurable port** — Default port 7373, adjustable in advanced settings.
 - **Fully local** — All traffic stays on your local network. Nothing leaves your Wi-Fi.
 
+### Director Mode
+
+Let someone else control your teleprompter remotely. A director can write, edit, and push scripts to your teleprompter in real time from any browser.
+
+- **Enable in Settings → Director** — Starts a dedicated HTTP + WebSocket server (default port 7575).
+- **Remote web UI** — The director opens a mobile-friendly web page with a full-featured script editor.
+- **Live text editing** — The director types or pastes a script, hits Go, and your teleprompter starts immediately with word tracking.
+- **Read-locked highlighting** — Already-read text is highlighted and locked in the web editor. Only unread text remains editable.
+- **Real-time sync** — Word progress, waveform, mic status, and audio levels stream to the director's browser at 10 Hz.
+- **Single-page mode** — Director mode works with a single page of text. Multi-page scripts are not used.
+- **Editor disabled** — When director mode is active, the macOS editor is replaced with a QR code overlay so the director has full control.
+- **QR code** — Scan or share the QR code from Settings or the editor overlay to connect the director instantly.
+
 ### File Support
 
 - **PowerPoint notes import** — Drop a .pptx file to extract presenter notes as pages. For Keynote or Google Slides, export to PowerPoint first.
@@ -189,6 +202,7 @@ Textream/
     ├── SettingsView.swift             # Tabbed settings UI
     ├── MarqueeTextView.swift          # Word flow layout and highlighting
     ├── BrowserServer.swift            # Remote connection HTTP + WebSocket server
+    ├── DirectorServer.swift           # Director mode HTTP + WebSocket server
     ├── PresentationNotesExtractor.swift # PPTX presenter notes extraction
     ├── UpdateChecker.swift            # GitHub release update checker
     └── Assets.xcassets/               # App icon and colors
