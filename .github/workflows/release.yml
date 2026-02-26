@@ -140,18 +140,16 @@ jobs:
           VERSION_NUM="${VERSION#v}"
           git clone https://x-access-token:${TAP_REPO_TOKEN}@github.com/f/homebrew-textream.git tap
           mkdir -p tap/Casks
-          cat > tap/Casks/textream.rb << 'CASKEOF'
+          cat > tap/Casks/textream.rb << CASKEOF
           cask "textream" do
-            version "VERSION_NUM_PLACEHOLDER"
+            version "${VERSION_NUM}"
 
-            on_system :mac, macos: :tahoe do
-              sha256 "SHA256_26_PLACEHOLDER"
-              url "https://github.com/f/textream/releases/download/vVERSION_NUM_PLACEHOLDER/Textream.dmg"
-            end
-
-            on_system :mac, macos: :sequoia do
-              sha256 "SHA256_15_PLACEHOLDER"
-              url "https://github.com/f/textream/releases/download/vVERSION_NUM_PLACEHOLDER/Textream-macos15.dmg"
+            if MacOS.version >= :tahoe
+              sha256 "${SHA256_26}"
+              url "https://github.com/f/textream/releases/download/${VERSION}/Textream.dmg"
+            else
+              sha256 "${SHA256_15}"
+              url "https://github.com/f/textream/releases/download/${VERSION}/Textream-macos15.dmg"
             end
 
             name "Textream"
@@ -172,10 +170,6 @@ jobs:
             ]
           end
           CASKEOF
-          # Replace placeholders with actual values
-          sed -i '' "s/VERSION_NUM_PLACEHOLDER/${VERSION_NUM}/g" tap/Casks/textream.rb
-          sed -i '' "s/SHA256_26_PLACEHOLDER/${SHA256_26}/g" tap/Casks/textream.rb
-          sed -i '' "s/SHA256_15_PLACEHOLDER/${SHA256_15}/g" tap/Casks/textream.rb
           cd tap
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
