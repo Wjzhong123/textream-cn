@@ -36,7 +36,11 @@ class DirectorServer {
     private var httpListener: NWListener?
     private var wsListener: NWListener?
     private var wsConnections: [NWConnection] = []
+    private var authenticatedConnections: Set<ObjectIdentifier> = []
     private var broadcastTimer: Timer?
+
+    // Security: shared secret token for WebSocket authentication
+    private var authToken: String = ""
 
     // Content state
     private var words: [String] = []
@@ -58,6 +62,7 @@ class DirectorServer {
 
     func start() {
         stop()
+        authToken = Self.generateToken()
         startHTTPListener()
         startWSListener()
     }
@@ -73,6 +78,7 @@ class DirectorServer {
 
         for conn in wsConnections { conn.cancel() }
         wsConnections.removeAll()
+        authenticatedConnections.removeAll()
         contentActive = false
     }
 
@@ -129,9 +135,9 @@ class DirectorServer {
     }
 
     private func buildHTTPResponse() -> Data {
-        let html = Self.generateHTML(wsPort: wsPort)
+        let html = Self.generateHTML(wsPort: wsPort, authToken: authToken)
         let body = Data(html.utf8)
-        let header = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(body.count)\r\nCache-Control: no-cache\r\nConnection: close\r\n\r\n"
+        let header = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(body.count)\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n"
         return Data(header.utf8) + body
     }
 
@@ -161,10 +167,20 @@ class DirectorServer {
         wsConnections.append(conn)
         receiveWSMessage(conn)
 
+        // Auto-disconnect unauthenticated connections after 5 seconds
+        let connId = ObjectIdentifier(conn)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            guard let self else { return }
+            if !self.authenticatedConnections.contains(connId) {
+                conn.cancel()
+            }
+        }
+
         conn.stateUpdateHandler = { [weak self] state in
             switch state {
             case .failed, .cancelled:
                 self?.wsConnections.removeAll { $0 === conn }
+                self?.authenticatedConnections.remove(ObjectIdentifier(conn))
             default: break
             }
         }
@@ -174,31 +190,52 @@ class DirectorServer {
         conn.receiveMessage { [weak self] data, _, _, error in
             if error != nil { conn.cancel(); return }
             if let data {
-                self?.handleIncomingMessage(data)
+                self?.handleIncomingMessage(data, from: conn)
             }
             self?.receiveWSMessage(conn)
         }
     }
 
-    private func handleIncomingMessage(_ data: Data) {
+    private func handleIncomingMessage(_ data: Data, from conn: NWConnection) {
         guard let command = try? JSONDecoder().decode(DirectorCommand.self, from: data) else { return }
+        let connId = ObjectIdentifier(conn)
 
         DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+
+            // First message must be authentication
+            if !self.authenticatedConnections.contains(connId) {
+                if command.type == "auth", command.text == self.authToken {
+                    self.authenticatedConnections.insert(connId)
+                } else {
+                    conn.cancel()
+                }
+                return
+            }
+
             switch command.type {
             case "setText":
                 if let text = command.text {
-                    self?.onSetText?(text)
+                    self.onSetText?(text)
                 }
             case "updateText":
                 if let text = command.text, let readCharCount = command.readCharCount {
-                    self?.onUpdateText?(text, readCharCount)
+                    self.onUpdateText?(text, readCharCount)
                 }
             case "stop":
-                self?.onStop?()
+                self.onStop?()
             default:
                 break
             }
         }
+    }
+
+    // MARK: - Token Generation
+
+    private static func generateToken() -> String {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        return bytes.map { String(format: "%02x", $0) }.joined()
     }
 
     // MARK: - Broadcasting
@@ -245,14 +282,14 @@ class DirectorServer {
         guard !wsConnections.isEmpty, let data = try? JSONEncoder().encode(state) else { return }
         let meta = NWProtocolWebSocket.Metadata(opcode: .text)
         let ctx = NWConnection.ContentContext(identifier: "ws", metadata: [meta])
-        for conn in wsConnections {
+        for conn in wsConnections where authenticatedConnections.contains(ObjectIdentifier(conn)) {
             conn.send(content: data, contentContext: ctx, completion: .idempotent)
         }
     }
 
     // MARK: - HTML Template
 
-    static func generateHTML(wsPort: UInt16) -> String {
+    static func generateHTML(wsPort: UInt16, authToken: String) -> String {
         """
         <!DOCTYPE html>
         <html lang="en">
@@ -379,13 +416,14 @@ class DirectorServer {
         </div>
 
         <script>
-        const WSP=\(wsPort),host=location.hostname;
+        const WSP=\(wsPort),host=location.hostname,AUTH_TOKEN='\(authToken)';
         let ws,rt,isActive=false,isRunning=false,lastReadCount=0;
 
         /* ---- connection ---- */
         function connect(){
           ws=new WebSocket('ws://'+host+':'+WSP);
           ws.onopen=()=>{clearTimeout(rt);
+            ws.send(JSON.stringify({type:'auth',text:AUTH_TOKEN}));
             document.getElementById('status-dot').className='connected';
             document.getElementById('status-text').textContent='Connected';};
           ws.onmessage=e=>{try{handleState(JSON.parse(e.data))}catch(x){console.error(x)}};
