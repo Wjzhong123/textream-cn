@@ -39,6 +39,11 @@ class DirectorServer {
     private var authenticatedConnections: Set<ObjectIdentifier> = []
     private var broadcastTimer: Timer?
 
+    // Connection limit to prevent resource exhaustion (CWE-400)
+    private let maxConnections = 5
+
+    // Dedicated queue for broadcasting to avoid blocking the main/UI thread
+    private let broadcastQueue = DispatchQueue(label: "com.textream.director.broadcast")
     // Security: shared secret token for WebSocket authentication
     private var authToken: String = ""
 
@@ -47,6 +52,7 @@ class DirectorServer {
     private var totalCharCount: Int = 0
     private weak var speechRecognizer: SpeechRecognizer?
     private var contentActive: Bool = false
+    private var lastBroadcastState: Data?
 
     // Callbacks
     var onSetText: ((String) -> Void)?
@@ -163,6 +169,10 @@ class DirectorServer {
     }
 
     private func handleWSConnection(_ conn: NWConnection) {
+        guard wsConnections.count < maxConnections else {
+            conn.cancel()
+            return
+        }
         conn.start(queue: .main)
         wsConnections.append(conn)
         receiveWSMessage(conn)
@@ -280,10 +290,20 @@ class DirectorServer {
 
     private func broadcast(_ state: DirectorState) {
         guard !wsConnections.isEmpty, let data = try? JSONEncoder().encode(state) else { return }
+
+        // Skip broadcast if state hasn't changed
+        if let last = lastBroadcastState, last == data { return }
+        lastBroadcastState = data
+
+        let connections = wsConnections.filter { authenticatedConnections.contains(ObjectIdentifier($0)) }
+        guard !connections.isEmpty else { return }
         let meta = NWProtocolWebSocket.Metadata(opcode: .text)
         let ctx = NWConnection.ContentContext(identifier: "ws", metadata: [meta])
-        for conn in wsConnections where authenticatedConnections.contains(ObjectIdentifier(conn)) {
-            conn.send(content: data, contentContext: ctx, completion: .idempotent)
+
+        broadcastQueue.async {
+            for conn in connections {
+                conn.send(content: data, contentContext: ctx, completion: .idempotent)
+            }
         }
     }
 
