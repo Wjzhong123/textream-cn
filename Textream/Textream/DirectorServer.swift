@@ -295,7 +295,8 @@ class DirectorServer {
         if let last = lastBroadcastState, last == data { return }
         lastBroadcastState = data
 
-        let connections = wsConnections
+        let connections = wsConnections.filter { authenticatedConnections.contains(ObjectIdentifier($0)) }
+        guard !connections.isEmpty else { return }
         let meta = NWProtocolWebSocket.Metadata(opcode: .text)
         let ctx = NWConnection.ContentContext(identifier: "ws", metadata: [meta])
 
