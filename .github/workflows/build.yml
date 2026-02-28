@@ -1,5 +1,3 @@
-$ cat workflow_fixed.yml
-
 name: Build Textream中文版
 
 on:
@@ -38,8 +36,7 @@ jobs:
           -configuration Release \
           -archivePath ../build-arm.xcarchive \
           -destination "generic/platform=macOS" \
-          ARCHS=arm64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO \
-          | xcpretty || cat build.log
+          ARCHS=arm64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
 
     - name: 编译Intel版本
       run: |
@@ -50,29 +47,23 @@ jobs:
           -configuration Release \
           -archivePath ../build-x86.xcarchive \
           -destination "generic/platform=macOS" \
-          ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO \
-          | xcpretty || cat build.log
+          ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
 
     - name: 创建通用二进制
       run: |
         ARM_APP="build-arm.xcarchive/Products/Applications/Textream.app"
         X86_APP="build-x86.xcarchive/Products/Applications/Textream.app"
         OUTPUT_APP="build-universal/Textream.app"
-
         mkdir -p build-universal
         cp -R "$ARM_APP" "$OUTPUT_APP"
-
         find "$ARM_APP" -type f | while read -r arm_file; do
           rel="${arm_file#$ARM_APP}"
           x86_file="$X86_APP$rel"
           out_file="$OUTPUT_APP$rel"
-
           if [ -f "$x86_file" ] && file "$arm_file" | grep -q "Mach-O"; then
             lipo -create "$arm_file" "$x86_file" -output "$out_file" 2>/dev/null || true
           fi
         done
-
-        echo "✅ Universal binary created"
         lipo -info "$OUTPUT_APP/Contents/MacOS/Textream"
 
     - name: 创建DMG
@@ -80,53 +71,23 @@ jobs:
         mkdir -p build-dmg
         cp -R build-universal/Textream.app build-dmg/
         ln -s /Applications build-dmg/Applications
-
-        hdiutil create \
-          -volname "Textream中文版" \
-          -srcfolder build-dmg \
-          -ov \
-          -format UDZO \
-          -imagekey zlib-level=9 \
-          Textream-CN.dmg
-
-        echo "✅ DMG created"
+        hdiutil create -volname "Textream中文版" -srcfolder build-dmg -ov -format UDZO Textream-CN.dmg
         ls -lh Textream-CN.dmg
 
-    - name: 上传DMG到Artifacts
+    - name: 上传DMG
       uses: actions/upload-artifact@v4
       with:
-        name: Textream-CN-macOS
+        name: Textream-CN
         path: Textream-CN.dmg
-        retention-days: 90
 
-    - name: 创建GitHub Release
-      if: success()
+    - name: 创建Release
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.event.inputs.version }}
         name: Textream中文版 ${{ github.event.inputs.version }}
         body: |
-          ## Textream 中文版 v${{ github.event.inputs.version }}
-
-          ### 📦 下载安装
-
-          1. 下载 `Textream-CN.dmg`
-          2. 双击打开
-          3. 拖拽 Textream.app 到 Applications 文件夹
-          4. 在终端运行: `xattr -cr /Applications/Textream.app`
-          5. 打开应用开始使用
-
-          ### ✨ 特性
-
-          - ✅ 完整的中文界面
-          - ✅ 自动检测系统语言
-          - ✅ 支持Intel和Apple Silicon
-
-          ### 系统要求
-
-          macOS 15.0 或更高版本
+          ## Textream 中文版
+          下载 Textream-CN.dmg 并安装
         files: Textream-CN.dmg
-        draft: false
-        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
