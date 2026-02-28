@@ -1,95 +1,38 @@
-steps:
-- name: Checkout code
-  uses: actions/checkout@v4
+name: Build Textream中文版
 
-- name: Build for Apple Silicon
-  run: |
-    cd Textream
-    xcodebuild archive \
-      -project Textream.xcodeproj \
-      -scheme Textream \
-      -configuration Release \
-      -archivePath ../build/Textream-arm64.xcarchive \
-      -destination "generic/platform=macOS" \
-      ARCHS=arm64 \
-      ONLY_ACTIVE_ARCH=NO \
-      SKIP_INSTALL=NO
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号'
+        required: false
+        default: 'v1.5.1-cn'
 
-- name: Build for Intel
-  run: |
-    cd Textream
-    xcodebuild archive \
-      -project Textream.xcodeproj \
-      -scheme Textream \
-      -configuration Release \
-      -archivePath ../build/Textream-x86_64.xcarchive \
-      -destination "generic/platform=macOS" \
-      ARCHS=x86_64 \
-      ONLY_ACTIVE_ARCH=NO \
-      SKIP_INSTALL=NO
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
 
-- name: Create Universal Binary
-  run: |
-    ARM_APP="build/Textream-arm64.xcarchive/Products/Applications/Textream.app"
-    X86_APP="build/Textream-x86_64.xcarchive/Products/Applications/Textream.app"
-    OUTPUT_APP="build/universal/Textream.app"
+    - name: 编译
+      run: |
+        cd Textream
+        bash build.sh
 
-    mkdir -p build/universal
-    cp -R "$ARM_APP" "$OUTPUT_APP"
+    - name: 上传
+      uses: actions/upload-artifact@v4
+      with:
+        name: Textream-CN
+        path: Textream/build/release/Textream.dmg
 
-    find "$ARM_APP" -type f | while read -r arm_file; do
-      rel="${arm_file#$ARM_APP}"
-      x86_file="$X86_APP$rel"
-      out_file="$OUTPUT_APP$rel"
-
-      if [ -f "$x86_file" ] && file "$arm_file" | grep -q "Mach-O"; then
-        lipo -create "$arm_file" "$x86_file" -output "$out_file" 2>/dev/null || true
-      fi
-    done
-
-- name: Create DMG
-  run: |
-    DMG_STAGING="build/dmg_staging"
-    mkdir -p "$DMG_STAGING"
-    cp -R build/universal/Textream.app "$DMG_STAGING/"
-    ln -s /Applications "$DMG_STAGING/Applications"
-
-    hdiutil create \
-      -volname "Textream中文版" \
-      -srcfolder "$DMG_STAGING" \
-      -ov \
-      -format UDZO \
-      -imagekey zlib-level=9 \
-      build/Textream-CN.dmg
-
-- name: Upload DMG as artifact
-  uses: actions/upload-artifact@v4
-  with:
-    name: Textream-CN-macOS
-    path: build/Textream-CN.dmg
-    retention-days: 90
-
-- name: Create Release
-  if: github.event_name == 'workflow_dispatch'
-  uses: softprops/action-gh-release@v1
-  with:
-    tag_name: ${{ github.event.inputs.version }}
-    name: Textream中文版 ${{ github.event.inputs.version }}
-    body: |
-      ## Textream 中文版
-      
-      这是Textream提词器的中文本地化版本。
-      
-      ### 安装方法
-      1. 下载 `Textream-CN.dmg`
-      2. 打开DMG文件
-      3. 将 Textream.app 拖到 Applications 文件夹
-      4. 在终端运行: `xattr -cr /Applications/Textream.app`
-      
-      ### 系统要求
-      - macOS 15.0 或更高版本
-    files: build/Textream-CN.dmg
-    draft: false
-    prerelease: false
-  env:
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: 发布
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.event.inputs.version }}
+        name: Textream中文版 ${{ github.event.inputs.version }}
+        body: |
+          ## Textream 中文版
+          下载 Textream-CN.dmg 并安装
+        files: Textream/build/release/Textream.dmg
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
