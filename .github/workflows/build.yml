@@ -1,3 +1,5 @@
+$ cat workflow_fixed.yml
+
 name: Build Textream中文版
 
 on:
@@ -11,28 +13,120 @@ on:
 jobs:
   build:
     runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v4
+    timeout-minutes: 30
 
-    - name: 编译
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 选择Xcode版本
+      run: |
+        sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer || \
+        sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer || \
+        sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || \
+        echo "Using default Xcode"
+
+    - name: 显示Xcode版本
+      run: xcodebuild -version
+
+    - name: 编译Apple Silicon版本
       run: |
         cd Textream
-        bash build.sh
+        xcodebuild archive \
+          -project Textream.xcodeproj \
+          -scheme Textream \
+          -configuration Release \
+          -archivePath ../build-arm.xcarchive \
+          -destination "generic/platform=macOS" \
+          ARCHS=arm64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO \
+          | xcpretty || cat build.log
 
-    - name: 上传
+    - name: 编译Intel版本
+      run: |
+        cd Textream
+        xcodebuild archive \
+          -project Textream.xcodeproj \
+          -scheme Textream \
+          -configuration Release \
+          -archivePath ../build-x86.xcarchive \
+          -destination "generic/platform=macOS" \
+          ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO \
+          | xcpretty || cat build.log
+
+    - name: 创建通用二进制
+      run: |
+        ARM_APP="build-arm.xcarchive/Products/Applications/Textream.app"
+        X86_APP="build-x86.xcarchive/Products/Applications/Textream.app"
+        OUTPUT_APP="build-universal/Textream.app"
+
+        mkdir -p build-universal
+        cp -R "$ARM_APP" "$OUTPUT_APP"
+
+        find "$ARM_APP" -type f | while read -r arm_file; do
+          rel="${arm_file#$ARM_APP}"
+          x86_file="$X86_APP$rel"
+          out_file="$OUTPUT_APP$rel"
+
+          if [ -f "$x86_file" ] && file "$arm_file" | grep -q "Mach-O"; then
+            lipo -create "$arm_file" "$x86_file" -output "$out_file" 2>/dev/null || true
+          fi
+        done
+
+        echo "✅ Universal binary created"
+        lipo -info "$OUTPUT_APP/Contents/MacOS/Textream"
+
+    - name: 创建DMG
+      run: |
+        mkdir -p build-dmg
+        cp -R build-universal/Textream.app build-dmg/
+        ln -s /Applications build-dmg/Applications
+
+        hdiutil create \
+          -volname "Textream中文版" \
+          -srcfolder build-dmg \
+          -ov \
+          -format UDZO \
+          -imagekey zlib-level=9 \
+          Textream-CN.dmg
+
+        echo "✅ DMG created"
+        ls -lh Textream-CN.dmg
+
+    - name: 上传DMG到Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Textream-CN
-        path: Textream/build/release/Textream.dmg
+        name: Textream-CN-macOS
+        path: Textream-CN.dmg
+        retention-days: 90
 
-    - name: 发布
+    - name: 创建GitHub Release
+      if: success()
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.event.inputs.version }}
         name: Textream中文版 ${{ github.event.inputs.version }}
         body: |
-          ## Textream 中文版
-          下载 Textream-CN.dmg 并安装
-        files: Textream/build/release/Textream.dmg
+          ## Textream 中文版 v${{ github.event.inputs.version }}
+
+          ### 📦 下载安装
+
+          1. 下载 `Textream-CN.dmg`
+          2. 双击打开
+          3. 拖拽 Textream.app 到 Applications 文件夹
+          4. 在终端运行: `xattr -cr /Applications/Textream.app`
+          5. 打开应用开始使用
+
+          ### ✨ 特性
+
+          - ✅ 完整的中文界面
+          - ✅ 自动检测系统语言
+          - ✅ 支持Intel和Apple Silicon
+
+          ### 系统要求
+
+          macOS 15.0 或更高版本
+        files: Textream-CN.dmg
+        draft: false
+        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
