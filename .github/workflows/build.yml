@@ -1,3 +1,5 @@
+$ cat /Users/mac/textream/workflow_simple.yml
+
 name: Build Textream中文版
 
 on:
@@ -17,19 +19,18 @@ jobs:
     - name: 检出代码
       uses: actions/checkout@v4
 
-    - name: 选择Xcode版本
+    - name: 显示环境信息
       run: |
-        sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer || \
-        sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer || \
-        sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || \
-        echo "Using default Xcode"
-
-    - name: 显示Xcode版本
-      run: xcodebuild -version
+        echo "=== 环境信息 ==="
+        xcodebuild -version
+        sw_vers
+        pwd
+        ls -la
 
     - name: 编译Apple Silicon版本
       run: |
         cd Textream
+        echo "=== 开始编译 Apple Silicon 版本 ==="
         xcodebuild archive \
           -project Textream.xcodeproj \
           -scheme Textream \
@@ -37,10 +38,12 @@ jobs:
           -archivePath ../build-arm.xcarchive \
           -destination "generic/platform=macOS" \
           ARCHS=arm64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
+        echo "=== Apple Silicon 编译完成 ==="
 
     - name: 编译Intel版本
       run: |
         cd Textream
+        echo "=== 开始编译 Intel 版本 ==="
         xcodebuild archive \
           -project Textream.xcodeproj \
           -scheme Textream \
@@ -48,46 +51,54 @@ jobs:
           -archivePath ../build-x86.xcarchive \
           -destination "generic/platform=macOS" \
           ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
+        echo "=== Intel 编译完成 ==="
 
     - name: 创建通用二进制
       run: |
+        echo "=== 创建通用二进制 ==="
         ARM_APP="build-arm.xcarchive/Products/Applications/Textream.app"
         X86_APP="build-x86.xcarchive/Products/Applications/Textream.app"
         OUTPUT_APP="build-universal/Textream.app"
+
         mkdir -p build-universal
         cp -R "$ARM_APP" "$OUTPUT_APP"
+
         find "$ARM_APP" -type f | while read -r arm_file; do
           rel="${arm_file#$ARM_APP}"
           x86_file="$X86_APP$rel"
           out_file="$OUTPUT_APP$rel"
+
           if [ -f "$x86_file" ] && file "$arm_file" | grep -q "Mach-O"; then
             lipo -create "$arm_file" "$x86_file" -output "$out_file" 2>/dev/null || true
           fi
         done
+
+        echo "=== 二进制信息 ==="
         lipo -info "$OUTPUT_APP/Contents/MacOS/Textream"
+        ls -lh "$OUTPUT_APP"
 
     - name: 创建DMG
       run: |
+        echo "=== 创建DMG ==="
         mkdir -p build-dmg
         cp -R build-universal/Textream.app build-dmg/
         ln -s /Applications build-dmg/Applications
-        hdiutil create -volname "Textream中文版" -srcfolder build-dmg -ov -format UDZO Textream-CN.dmg
+
+        hdiutil create \
+          -volname "Textream中文版" \
+          -srcfolder build-dmg \
+          -ov \
+          -format UDZO \
+          -imagekey zlib-level=9 \
+          Textream-CN.dmg
+
+        echo "=== DMG创建完成 ==="
         ls -lh Textream-CN.dmg
 
-    - name: 上传DMG
+    - name: 上传DMG到Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Textream-CN
+        name: Textream-CN-macOS
         path: Textream-CN.dmg
-
-    - name: 创建Release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: ${{ github.event.inputs.version }}
-        name: Textream中文版 ${{ github.event.inputs.version }}
-        body: |
-          ## Textream 中文版
-          下载 Textream-CN.dmg 并安装
-        files: Textream-CN.dmg
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        retention-days: 90
+        if-no-files-found: error
