@@ -24,17 +24,7 @@ struct ContentView: View {
     @State private var showAbout = false
     @FocusState private var isTextFocused: Bool
 
-    private let defaultText = """
-Welcome to Textream! This is your personal teleprompter that sits right below your MacBook's notch. [smile]
-
-As you read aloud, the text will highlight in real-time, following your voice. The speech recognition matches your words and keeps track of your progress. [pause]
-
-You can pause at any time, go back and re-read sections, and the highlighting will follow along. When you finish reading all the text, the overlay will automatically close with a smooth animation. [nod]
-
-Try reading this passage out loud to see how the highlighting works. The waveform at the bottom shows your voice activity, and you'll see the last few words you spoke displayed next to it.
-
-Happy presenting! [wave]
-"""
+    private let defaultText = LocalizedStrings.welcomeText
 
     private var languageLabel: String {
         let locale = NotchSettings.shared.speechLocale
@@ -282,10 +272,10 @@ Happy presenting! [wave]
                     Image(systemName: "doc.text")
                         .font(.system(size: 28, weight: .light))
                         .foregroundStyle(Color.accentColor)
-                    Text("Drop PowerPoint (.pptx) file")
+                    Text(LocalizedStrings.dropPowerPointFile)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(.primary)
-                    Text("For Keynote or Google Slides,\nexport as PPTX first.")
+                    Text(LocalizedStrings.exportAsPPTX)
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -340,10 +330,10 @@ Happy presenting! [wave]
                 .font(.system(size: 40, weight: .light))
                 .foregroundStyle(.secondary)
 
-            Text("Director Mode")
+            Text(LocalizedStrings.directorMode)
                 .font(.system(size: 22, weight: .bold))
 
-            Text(service.directorIsReading ? "Reading from director…" : "Waiting for director to send script…")
+            Text(service.directorIsReading ? LocalizedStrings.readingFromDirector : LocalizedStrings.waitingForDirector)
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
 
@@ -382,7 +372,7 @@ Happy presenting! [wave]
             Button {
                 showSettings = true
             } label: {
-                Text("Open Settings")
+                Text(LocalizedStrings.openSettings)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
             }
@@ -456,7 +446,7 @@ Happy presenting! [wave]
                         HStack(spacing: 3) {
                             Image(systemName: "plus")
                                 .font(.system(size: 10, weight: .semibold))
-                            Text("Page")
+                            Text(LocalizedStrings.page)
                                 .font(.system(size: 11, weight: .medium))
                         }
                         .foregroundStyle(.secondary)
@@ -523,7 +513,7 @@ Happy presenting! [wave]
 
     private func pagePreview(_ page: String) -> String {
         let trimmed = page.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return "Empty" }
+        if trimmed.isEmpty { return LocalizedStrings.empty }
         let words = trimmed.components(separatedBy: .whitespacesAndNewlines).filter { !$0.isEmpty }
         let preview = words.prefix(5).joined(separator: " ")
         return preview.count > 30 ? String(preview.prefix(30)) + "…" : preview
@@ -677,13 +667,13 @@ struct AboutView: View {
             VStack(spacing: 4) {
                 Text("Textream")
                     .font(.system(size: 20, weight: .bold))
-                Text("Version \(appVersion)")
+                Text("\(LocalizedStrings.version) \(appVersion)")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             }
 
             // Description
-            Text("A free, open-source teleprompter that highlights your script in real-time as you speak.")
+            Text(LocalizedStrings.aboutDescription)
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -695,7 +685,7 @@ struct AboutView: View {
                     HStack(spacing: 5) {
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
                             .font(.system(size: 11, weight: .semibold))
-                        Text("GitHub")
+                        Text(LocalizedStrings.github)
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundStyle(.primary)
@@ -710,7 +700,7 @@ struct AboutView: View {
                         Image(systemName: "heart.fill")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(.pink)
-                        Text("Donate")
+                        Text(LocalizedStrings.donate)
                             .font(.system(size: 12, weight: .medium))
                     }
                     .foregroundStyle(.primary)
@@ -724,15 +714,15 @@ struct AboutView: View {
             Divider().padding(.horizontal, 20)
 
             VStack(spacing: 4) {
-                Text("Made by Fatih Kadir Akin")
+                Text(LocalizedStrings.madeBy)
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
-                Text("Original idea by Semih Kışlar")
+                Text(LocalizedStrings.originalIdeaBy)
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             }
 
-            Button("OK") {
+            Button(LocalizedStrings.ok) {
                 dismiss()
             }
             .buttonStyle(.borderedProminent)
