@@ -1,26 +1,13 @@
-$ cat workflow_ultra_simple.yml
-
 name: Build
-
 on:
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: macos-latest
-    
     steps:
       - uses: actions/checkout@v4
-      
-      - run: cd Textream && xcodebuild archive -project Textream.xcodeproj -scheme Textream -configuration Release -archivePath ../build-arm.xcarchive -destination "generic/platform=macOS" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
-      
-      - run: cd Textream && xcodebuild archive -project Textream.xcodeproj -scheme Textream -configuration Release -archivePath ../build-x86.xcarchive -destination "generic/platform=macOS" ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
-      
-      - run: ARM=build-arm.xcarchive/Products/Applications/Textream.app && X86=build-x86.xcarchive/Products/Applications/Textream.app && OUT=build-universal/Textream.app && mkdir -p build-universal && cp -R $ARM $OUT && find $ARM -type f | while read f; do r=${f#$ARM} && x=$X86$r && o=$OUT$r && [ -f $x ] && file $f | grep -q Mach-O && lipo -create $f $x -output $o; done
-      
-      - run: mkdir -p build-dmg && cp -R build-universal/Textream.app build-dmg/ && ln -s /Applications build-dmg/Applications && hdiutil create -volname Textream -srcfolder build-dmg -ov -format UDZO Textream-CN.dmg
-      
+      - run: cd Textream && xcodebuild archive -project Textream.xcodeproj -scheme Textream -configuration Release -archivePath ../build.xcarchive -destination "generic/platform=macOS" SKIP_INSTALL=NO
       - uses: actions/upload-artifact@v4
         with:
-          name: Textream-CN
-          path: Textream-CN.dmg
+          name: Textream
+          path: Textream/build/release/Textream.app
