@@ -1,5 +1,19 @@
-$ cat /Users/mac/textream/workflow_simple.yml
+$ chmod +x update_workflow.sh && ./update_workflow.sh
 
+======================================
+ Textream 中文版 - Workflow 更新指南
+======================================
+
+📝 请按照以下步骤操作：
+
+1️⃣  在浏览器中打开编辑页面：
+   https://github.com/Wjzhong123/textream-cn/edit/master/.github/workflows/build.yml
+
+2️⃣  全选旧内容（Cmd+A 或 Ctrl+A）并删除
+
+3️⃣  复制下面虚线之间的内容：
+
+============================================================
 name: Build Textream中文版
 
 on:
@@ -39,6 +53,7 @@ jobs:
           -destination "generic/platform=macOS" \
           ARCHS=arm64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
         echo "=== Apple Silicon 编译完成 ==="
+        ls -la ../build-arm.xcarchive/Products/Applications/
 
     - name: 编译Intel版本
       run: |
@@ -52,6 +67,7 @@ jobs:
           -destination "generic/platform=macOS" \
           ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
         echo "=== Intel 编译完成 ==="
+        ls -la ../build-x86.xcarchive/Products/Applications/
 
     - name: 创建通用二进制
       run: |
@@ -94,6 +110,19 @@ jobs:
 
         echo "=== DMG创建完成 ==="
         ls -lh Textream-CN.dmg
+        file Textream-CN.dmg
+
+    - name: 检查DMG文件
+      run: |
+        echo "=== 检查DMG文件 ==="
+        if [ -f "Textream-CN.dmg" ]; then
+          echo "✅ DMG文件存在"
+          ls -lh Textream-CN.dmg
+          du -h Textream-CN.dmg
+        else
+          echo "❌ DMG文件不存在"
+          exit 1
+        fi
 
     - name: 上传DMG到Artifacts
       uses: actions/upload-artifact@v4
@@ -102,3 +131,21 @@ jobs:
         path: Textream-CN.dmg
         retention-days: 90
         if-no-files-found: error
+
+    - name: 上传完成提示
+      run: echo "✅ DMG已上传到Artifacts！请在Actions页面的Artifacts部分下载"
+============================================================
+
+4️⃣  粘贴到编辑器
+
+5️⃣  滚动到底部，提交信息填写：Fix workflow and add debug info
+
+6️⃣  点击 'Commit changes' 按钮
+
+✅ 完成后访问 Actions 页面运行编译：
+   https://github.com/Wjzhong123/textream-cn/actions
+
+📦 编译成功后，在 Artifacts 部分下载 DMG
+
+======================================
+
