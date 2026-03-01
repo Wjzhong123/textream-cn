@@ -1,12 +1,12 @@
-$ cat workflow_correct.yml
+$ cat workflow_clean.yml
 
-name: Build Textream Chinese Edition
+name: Build
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Version tag
+        description: Version
         required: false
         default: v1.5.1-cn
 
@@ -16,104 +16,42 @@ jobs:
     timeout-minutes: 30
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Show environment info
-      run: |
-        echo "=== Environment ==="
-        xcodebuild -version
-        sw_vers
-        pwd
-        ls -la
+      - name: Build ARM
+        run: |
+          cd Textream
+          xcodebuild archive -project Textream.xcodeproj -scheme Textream -configuration Release -archivePath ../build-arm.xcarchive -destination "generic/platform=macOS" ARCHS=arm64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
 
-    - name: Build for Apple Silicon
-      run: |
-        cd Textream
-        echo "=== Building Apple Silicon ==="
-        xcodebuild archive \
-          -project Textream.xcodeproj \
-          -scheme Textream \
-          -configuration Release \
-          -archivePath ../build-arm.xcarchive \
-          -destination "generic/platform=macOS" \
-          ARCHS=arm64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
-        echo "=== Done ==="
-        ls -la ../build-arm.xcarchive/Products/Applications/
+      - name: Build x86
+        run: |
+          cd Textream
+          xcodebuild archive -project Textream.xcodeproj -scheme Textream -configuration Release -archivePath ../build-x86.xcarchive -destination "generic/platform=macOS" ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
 
-    - name: Build for Intel
-      run: |
-        cd Textream
-        echo "=== Building Intel ==="
-        xcodebuild archive \
-          -project Textream.xcodeproj \
-          -scheme Textream \
-          -configuration Release \
-          -archivePath ../build-x86.xcarchive \
-          -destination "generic/platform=macOS" \
-          ARCHS=x86_64 ONLY_ACTIVE_ARCH=NO SKIP_INSTALL=NO
-        echo "=== Done ==="
-        ls -la ../build-x86.xcarchive/Products/Applications/
+      - name: Universal
+        run: |
+          ARM="build-arm.xcarchive/Products/Applications/Textream.app"
+          X86="build-x86.xcarchive/Products/Applications/Textream.app"
+          OUT="build-universal/Textream.app"
+          mkdir -p build-universal
+          cp -R "$ARM" "$OUT"
+          find "$ARM" -type f | while read f; do
+            r="${f#$ARM}"
+            x="$X86$r"
+            o="$OUT$r"
+            [ -f "$x" ] && file "$f" | grep -q Mach-O && lipo -create "$f" "$x" -output "$o" 2>/dev/null || true
+          done
 
-    - name: Create universal binary
-      run: |
-        echo "=== Creating universal binary ==="
-        ARM_APP="build-arm.xcarchive/Products/Applications/Textream.app"
-        X86_APP="build-x86.xcarchive/Products/Applications/Textream.app"
-        OUTPUT_APP="build-universal/Textream.app"
+      - name: DMG
+        run: |
+          mkdir -p build-dmg
+          cp -R build-universal/Textream.app build-dmg/
+          ln -s /Applications build-dmg/Applications
+          hdiutil create -volname Textream -srcfolder build-dmg -ov -format UDZO Textream-CN.dmg
 
-        mkdir -p build-universal
-        cp -R "$ARM_APP" "$OUTPUT_APP"
-
-        find "$ARM_APP" -type f | while read -r arm_file; do
-          rel="${arm_file#$ARM_APP}"
-          x86_file="$X86_APP$rel"
-          out_file="$OUTPUT_APP$rel"
-
-          if [ -f "$x86_file" ] && file "$arm_file" | grep -q "Mach-O"; then
-            lipo -create "$arm_file" "$x86_file" -output "$out_file" 2>/dev/null || true
-          fi
-        done
-
-        echo "=== Binary info ==="
-        lipo -info "$OUTPUT_APP/Contents/MacOS/Textream"
-        ls -lh "$OUTPUT_APP"
-
-    - name: Create DMG
-      run: |
-        echo "=== Creating DMG ==="
-        mkdir -p build-dmg
-        cp -R build-universal/Textream.app build-dmg/
-        ln -s /Applications build-dmg/Applications
-
-        hdiutil create \
-          -volname "Textream-CN" \
-          -srcfolder build-dmg \
-          -ov \
-          -format UDZO \
-          -imagekey zlib-level=9 \
-          Textream-CN.dmg
-
-        echo "=== DMG created ==="
-        ls -lh Textream-CN.dmg
-        file Textream-CN.dmg
-
-    - name: Verify DMG
-      run: |
-        if [ -f "Textream-CN.dmg" ]; then
-          echo "DMG file exists"
-          ls -lh Textream-CN.dmg
-        else
-          echo "DMG file not found"
-          exit 1
-        fi
-
-    - name: Upload DMG
-      uses: actions/upload-artifact@v4
-      with:
-        name: Textream-CN-macOS
-        path: Textream-CN.dmg
-        retention-days: 90
-
-    - name: Done
-      run: echo "DMG uploaded to Artifacts"
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Textream-CN
+          path: Textream-CN.dmg
