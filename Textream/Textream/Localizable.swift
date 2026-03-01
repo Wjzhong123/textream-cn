@@ -7,10 +7,49 @@
 
 import Foundation
 import SwiftUI
+import Combine
+
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system = "system"
+    case chinese = "zh"
+    case english = "en"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .chinese: return "中文"
+        case .english: return "English"
+        }
+    }
+}
+
+class LanguageSettings: ObservableObject {
+    static let shared = LanguageSettings()
+
+    @AppStorage("appLanguage") var language: String = "system"
+
+    private init() {}
+
+    var currentLanguage: AppLanguage {
+        get {
+            AppLanguage(rawValue: language) ?? .system
+        }
+        set {
+            language = newValue.rawValue
+        }
+    }
+}
 
 struct LocalizedStrings {
+    static var languageSettings: LanguageSettings { LanguageSettings.shared }
+
     static var isChinese: Bool {
-        Locale.current.language.languageCode?.identifier == "zh"
+        let lang = languageSettings.currentLanguage
+        if lang == .chinese { return true }
+        if lang == .english { return false }
+        return Locale.current.language.languageCode?.identifier == "zh"
     }
     
     // MARK: - App
@@ -170,6 +209,10 @@ struct LocalizedStrings {
     static var textreamHelp: String { isChinese ? "Textream 帮助" : "Textream Help" }
     static var openFileOrPresentation: String { isChinese ? "打开文件或演示文稿…" : "Open File or Presentation…" }
     static var saveAs: String { isChinese ? "另存为…" : "Save As…" }
+
+    // MARK: - Language
+    static var language: String { isChinese ? "语言" : "Language" }
+    static var followSystem: String { isChinese ? "跟随系统" : "System Default" }
 }
 
 // Helper view modifier for localization

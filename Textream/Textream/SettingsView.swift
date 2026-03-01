@@ -263,7 +263,7 @@ struct NotchPreviewContent: View {
 // MARK: - Settings Tabs
 
 enum SettingsTab: String, CaseIterable, Identifiable {
-    case appearance, guidance, teleprompter, external, browser, director
+    case appearance, guidance, teleprompter, external, browser, director, language
 
     var id: String { rawValue }
 
@@ -275,6 +275,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .external:   return LocalizedStrings.external
         case .browser:    return LocalizedStrings.remote
         case .director:   return LocalizedStrings.director
+        case .language:   return LocalizedStrings.language
         }
     }
 
@@ -286,6 +287,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .external:   return "rectangle.on.rectangle"
         case .browser:    return "antenna.radiowaves.left.and.right"
         case .director:   return "megaphone"
+        case .language:   return "globe"
         }
     }
 }
@@ -355,6 +357,8 @@ struct SettingsView: View {
                     browserTab
                 case .director:
                     directorTab
+                case .language:
+                    languageTab
                 }
 
                 Divider()
@@ -1298,5 +1302,24 @@ struct SettingsView: View {
         if settings.fullscreenScreenID == 0, let main = NSScreen.main {
             settings.fullscreenScreenID = main.displayID
         }
+    }
+
+    // MARK: - Language Tab
+
+    @StateObject private var languageSettings = LanguageSettings.shared
+
+    private var languageTab: some View {
+        Form {
+            Section {
+                Picker(LocalizedStrings.language, selection: $languageSettings.language) {
+                    Text(LocalizedStrings.followSystem).tag("system")
+                    Text("中文").tag("zh")
+                    Text("English").tag("en")
+                }
+                .pickerStyle(.radioGroup)
+            }
+        }
+        .formStyle(.grouped)
+        .padding()
     }
 }
