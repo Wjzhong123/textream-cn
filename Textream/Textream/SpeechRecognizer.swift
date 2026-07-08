@@ -106,6 +106,12 @@ class SpeechRecognizer {
     /// Sliding window of recent match positions for confidence gating.
     /// We require 2-of-3 recent results to agree before committing a forward jump.
     private var recentMatchPositions: [Int] = []
+    /// Chars of the running transcript to ignore when matching — set on jumps
+    /// so the task can keep running instead of being restarted (a restart
+    /// drops the audio spoken during the restart window and takes ~1s to
+    /// warm, which loses exactly the words the user re-speaks after a jump).
+    /// Reset to 0 whenever a new recognition task starts a fresh transcript.
+    private var spokenAnchor: Int = 0
 
     /// Update the source text while preserving the current recognized char count.
     /// Used by Director Mode to live-edit unread text without resetting read progress.
@@ -119,15 +125,15 @@ class SpeechRecognizer {
         recentMatchPositions = []
     }
 
-    /// Jump highlight to a specific char offset (e.g. when user taps a word)
+    /// Jump highlight to a specific char offset (e.g. when user taps a word).
+    /// Keeps the recognition task alive and anchors matching past the
+    /// already-spoken transcript.
     func jumpTo(charOffset: Int) {
         recognizedCharCount = charOffset
         matchStartOffset = charOffset
         retryCount = 0
         recentMatchPositions = []
-        if isListening {
-            restartRecognition()
-        }
+        spokenAnchor = lastSpokenText.count
     }
 
     func start(with text: String) {
@@ -266,6 +272,7 @@ class SpeechRecognizer {
     private func beginRecognition() {
         // Ensure clean state
         cleanupRecognition()
+        spokenAnchor = 0 // new session = fresh transcript
 
         // Create a fresh engine so it picks up the current hardware format.
         // AVAudioEngine caches the device format internally and reset() alone
@@ -470,6 +477,7 @@ class SpeechRecognizer {
         // Update match offset before restarting
         matchStartOffset = recognizedCharCount
         recentMatchPositions = []
+        spokenAnchor = 0 // new task = fresh transcript
 
         // Cancel any pending restart to avoid stale beginRecognition clobbering this session
         pendingRestart?.cancel()
@@ -575,7 +583,13 @@ class SpeechRecognizer {
 
     // MARK: - Fuzzy character-level matching
 
-    private func matchCharacters(spoken: String) {
+    private func matchCharacters(spoken fullSpoken: String) {
+        // Ignore transcript from before the most recent jump
+        let spoken = spokenAnchor > 0
+            ? String(fullSpoken.dropFirst(min(spokenAnchor, fullSpoken.count)))
+            : fullSpoken
+        guard !spoken.isEmpty else { return }
+
         // Strategy 1: character-level fuzzy match from the start offset
         let charResult = charLevelMatch(spoken: spoken)
 
