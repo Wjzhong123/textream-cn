@@ -106,6 +106,18 @@ class SpeechRecognizer {
     /// Sliding window of recent match positions for confidence gating.
     /// We require 2-of-3 recent results to agree before committing a forward jump.
     private var recentMatchPositions: [Int] = []
+    /// Transcript prefix to ignore when matching — set on jumps so the task
+    /// can keep running instead of being restarted (a restart loses the words
+    /// the user re-speaks right after the jump). Stored as the prefix string,
+    /// not a char count: partial results revise earlier text, and trimming by
+    /// the surviving common prefix avoids swallowing post-jump speech when
+    /// the pre-jump portion changes length. Cleared whenever a new
+    /// recognition task starts a fresh transcript.
+    private var spokenAnchorPrefix: String = ""
+    /// Results computed before a jump can be delivered after it; matching
+    /// ignores results for a short window so pre-jump speech isn't matched
+    /// against the text at the new offset.
+    private var lastJumpAt: Date = .distantPast
 
     /// Update the source text while preserving the current recognized char count.
     /// Used by Director Mode to live-edit unread text without resetting read progress.
@@ -119,15 +131,28 @@ class SpeechRecognizer {
         recentMatchPositions = []
     }
 
-    /// Jump highlight to a specific char offset (e.g. when user taps a word)
+    /// Jump highlight to a specific char offset (e.g. when user taps a word).
+    /// Nearby jumps keep the recognition task alive and anchor matching past
+    /// the already-spoken transcript, so tracking resumes on the first
+    /// re-spoken word. Far jumps restart the task instead: contextualStrings
+    /// are built for the section being read, and after a page-scale jump
+    /// stale hints hurt recognition more than the task warm-up costs.
+    /// retryCount is deliberately not touched here — resetting it on every
+    /// tap would let a user keep a failing availability-retry loop alive
+    /// forever.
     func jumpTo(charOffset: Int) {
+        let distance = abs(charOffset - recognizedCharCount)
         recognizedCharCount = charOffset
         matchStartOffset = charOffset
-        retryCount = 0
         recentMatchPositions = []
-        if isListening {
+        if isListening && (distance > 500 || !audioEngine.isRunning) {
+            // Far jump, or the engine died without a config-change callback —
+            // fall back to a full restart (also refreshes contextualStrings).
             restartRecognition()
+            return
         }
+        spokenAnchorPrefix = lastSpokenText
+        lastJumpAt = Date()
     }
 
     func start(with text: String) {
@@ -266,6 +291,10 @@ class SpeechRecognizer {
     private func beginRecognition() {
         // Ensure clean state
         cleanupRecognition()
+        // New session = fresh transcript (see restartTask for why
+        // lastSpokenText must be cleared alongside the anchor)
+        spokenAnchorPrefix = ""
+        lastSpokenText = ""
 
         // Create a fresh engine so it picks up the current hardware format.
         // AVAudioEngine caches the device format internally and reset() alone
@@ -299,8 +328,25 @@ class SpeechRecognizer {
         }
 
         speechRecognizer = SFSpeechRecognizer(locale: Locale(identifier: NotchSettings.shared.speechLocale))
-        guard let speechRecognizer, speechRecognizer.isAvailable else {
-            error = "Speech recognizer not available"
+        guard let speechRecognizer else {
+            // nil means the locale isn't supported for speech recognition —
+            // that's permanent, so fail immediately instead of retrying.
+            error = "Speech recognition isn't supported for the selected language"
+            isListening = false
+            return
+        }
+        guard speechRecognizer.isAvailable else {
+            // Unavailability is often transient (the recognition service
+            // churns briefly after a task cancellation or device change).
+            // Giving up here leaves the engine stopped and the app deaf —
+            // retry like the invalid-format guard below does.
+            if retryCount < maxRetries {
+                retryCount += 1
+                scheduleBeginRecognition(after: 0.5)
+            } else {
+                error = "Speech recognizer not available"
+                isListening = false
+            }
             return
         }
 
@@ -470,6 +516,12 @@ class SpeechRecognizer {
         // Update match offset before restarting
         matchStartOffset = recognizedCharCount
         recentMatchPositions = []
+        // New task = fresh transcript. lastSpokenText must be cleared too:
+        // a jump taken before the first new result would otherwise anchor on
+        // the old task's transcript and trim away everything the new task
+        // ever produces.
+        spokenAnchorPrefix = ""
+        lastSpokenText = ""
 
         // Cancel any pending restart to avoid stale beginRecognition clobbering this session
         pendingRestart?.cancel()
@@ -507,8 +559,17 @@ class SpeechRecognizer {
 
         // Start new recognition task
         guard let speechRecognizer, speechRecognizer.isAvailable else {
-            error = "Speech recognizer not available"
-            isListening = false
+            // Transient unavailability — fall back to a full session restart
+            // with retries rather than going permanently deaf.
+            if retryCount < maxRetries {
+                retryCount += 1
+                scheduleBeginRecognition(after: 0.5)
+            } else {
+                error = "Speech recognizer not available"
+                isListening = false
+                // Don't leave the mic hot with no session consuming it
+                cleanupAudioEngine()
+            }
             return
         }
 
@@ -575,7 +636,24 @@ class SpeechRecognizer {
 
     // MARK: - Fuzzy character-level matching
 
-    private func matchCharacters(spoken: String) {
+    private func matchCharacters(spoken fullSpoken: String) {
+        // Results computed before a jump can be delivered just after it —
+        // don't match pre-jump speech against the text at the new offset.
+        guard Date().timeIntervalSince(lastJumpAt) > 0.3 else { return }
+
+        // Ignore transcript from before the most recent jump. Trim by the
+        // common prefix that survived the recognizer's revisions, but never
+        // less than the anchor length minus a small slack — a revision very
+        // early in the transcript would otherwise leak the whole pre-jump
+        // transcript back into matching.
+        var spoken = fullSpoken
+        if !spokenAnchorPrefix.isEmpty {
+            let common = zip(spokenAnchorPrefix, fullSpoken).prefix(while: { $0 == $1 }).count
+            let trimLen = min(fullSpoken.count, max(common, spokenAnchorPrefix.count - 24))
+            spoken = String(fullSpoken.dropFirst(trimLen))
+        }
+        guard !spoken.isEmpty else { return }
+
         // Strategy 1: character-level fuzzy match from the start offset
         let charResult = charLevelMatch(spoken: spoken)
 
