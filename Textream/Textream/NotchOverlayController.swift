@@ -61,7 +61,7 @@ class NotchOverlayController: NSObject {
 
     func show(text: String, hasNextPage: Bool = false, onComplete: (() -> Void)? = nil) {
         self.onComplete = onComplete
-        self.onNextPage = { [weak self] in
+        self.onNextPage = {
             TextreamService.shared.advanceToNextPage()
         }
         self.isDismissing = false
@@ -906,7 +906,15 @@ struct NotchOverlayView: View {
                 .frame(width: 80, height: 24)
                 .clipped()
 
-                if listeningMode == .wordTracking {
+                if let error = speechRecognizer.error {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.red.opacity(0.9))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .help(error)
+                } else if listeningMode == .wordTracking {
                     Text(speechRecognizer.lastSpokenText.split(separator: " ").suffix(3).joined(separator: " "))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.white.opacity(0.5))
@@ -971,18 +979,26 @@ struct NotchOverlayView: View {
                     .buttonStyle(.plain)
                 } else {
                     Button {
-                        if speechRecognizer.isListening {
+                        if speechRecognizer.isListening || speechRecognizer.isStarting {
                             speechRecognizer.stop()
                         } else {
                             speechRecognizer.resume()
                         }
                     } label: {
-                        Image(systemName: speechRecognizer.isListening ? "mic.fill" : "mic.slash.fill")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(speechRecognizer.isListening ? .yellow.opacity(0.8) : .white.opacity(0.6))
-                            .frame(width: 24, height: 24)
-                            .background(.white.opacity(0.15))
-                            .clipShape(Circle())
+                        Group {
+                            if speechRecognizer.isStarting {
+                                ProgressView()
+                                    .controlSize(.mini)
+                                    .tint(.white.opacity(0.8))
+                            } else {
+                                Image(systemName: speechRecognizer.isListening ? "mic.fill" : "mic.slash.fill")
+                                    .font(.system(size: 10, weight: .bold))
+                            }
+                        }
+                        .foregroundStyle(speechRecognizer.isListening ? .yellow.opacity(0.8) : .white.opacity(0.6))
+                        .frame(width: 24, height: 24)
+                        .background(.white.opacity(0.15))
+                        .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -1384,7 +1400,15 @@ struct FloatingOverlayView: View {
                 )
                 .frame(width: 160, height: 24)
 
-                if listeningMode == .wordTracking {
+                if let error = speechRecognizer.error {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.red.opacity(0.9))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .help(error)
+                } else if listeningMode == .wordTracking {
                     Text(speechRecognizer.lastSpokenText.split(separator: " ").suffix(3).joined(separator: " "))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.white.opacity(0.5))
@@ -1450,18 +1474,26 @@ struct FloatingOverlayView: View {
                         .buttonStyle(.plain)
                     } else {
                         Button {
-                            if speechRecognizer.isListening {
+                            if speechRecognizer.isListening || speechRecognizer.isStarting {
                                 speechRecognizer.stop()
                             } else {
                                 speechRecognizer.resume()
                             }
                         } label: {
-                            Image(systemName: speechRecognizer.isListening ? "mic.fill" : "mic.slash.fill")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(speechRecognizer.isListening ? .yellow.opacity(0.8) : .white.opacity(0.6))
-                                .frame(width: 24, height: 24)
-                                .background(.white.opacity(0.15))
-                                .clipShape(Circle())
+                            Group {
+                                if speechRecognizer.isStarting {
+                                    ProgressView()
+                                        .controlSize(.mini)
+                                        .tint(.white.opacity(0.8))
+                                } else {
+                                    Image(systemName: speechRecognizer.isListening ? "mic.fill" : "mic.slash.fill")
+                                        .font(.system(size: 10, weight: .bold))
+                                }
+                            }
+                            .foregroundStyle(speechRecognizer.isListening ? .yellow.opacity(0.8) : .white.opacity(0.6))
+                            .frame(width: 24, height: 24)
+                            .background(.white.opacity(0.15))
+                            .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
                     }
