@@ -146,17 +146,17 @@ jobs:
 
             if MacOS.version >= :tahoe
               sha256 "${SHA256_26}"
-              url "https://github.com/f/textream/releases/download/${VERSION}/Textream.dmg"
+              url "https://github.com/f/textream/releases/download/v#{version}/Textream.dmg"
             else
               sha256 "${SHA256_15}"
-              url "https://github.com/f/textream/releases/download/${VERSION}/Textream-macos15.dmg"
+              url "https://github.com/f/textream/releases/download/v#{version}/Textream-macos15.dmg"
             end
 
             name "Textream"
             desc "macOS teleprompter that highlights your script in real-time as you speak"
             homepage "https://github.com/f/textream"
 
-            depends_on macos: ">= :sequoia"
+            depends_on macos: :sequoia
 
             app "Textream.app"
 
