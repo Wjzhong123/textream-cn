@@ -192,8 +192,6 @@ self.fail(LocalizedStrings.speechNotAuthorized)
             }
             return
         }
-            return
-        }
 
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         guard let recognitionRequest else {
@@ -213,8 +211,6 @@ self.fail(LocalizedStrings.speechNotAuthorized)
             } else {
                 fail(LocalizedStrings.audioInputUnavailable)
             }
-            return
-        }
             return
         }
 

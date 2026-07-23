@@ -828,7 +828,7 @@ struct AboutView: View {
 
             // Links
             HStack(spacing: 12) {
-                Link(destination: URL(string: "https://github.com/f/textream")!) {
+                Link(destination: URL(string: "https://github.com/Wjzhong123/textream-cn")!) {
                     HStack(spacing: 5) {
                         Image(systemName: "chevron.left.forwardslash.chevron.right")
                             .font(.system(size: 11, weight: .semibold))

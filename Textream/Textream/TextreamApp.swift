@@ -167,7 +167,7 @@ struct TextreamApp: App {
             CommandGroup(replacing: .windowArrangement) { }
             CommandGroup(replacing: .help) {
                 Button(LocalizedStrings.textreamHelp) {
-                    if let url = URL(string: "https://github.com/f/textream") {
+                    if let url = URL(string: "https://github.com/Wjzhong123/textream-cn") {
                         NSWorkspace.shared.open(url)
                     }
                 }

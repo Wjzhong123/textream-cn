@@ -10,8 +10,8 @@ import AppKit
 class UpdateChecker {
     static let shared = UpdateChecker()
 
-    private let repoOwner = "f"
-    private let repoName = "textream"
+    private let repoOwner = "Wjzhong123"
+    private let repoName = "textream-cn"
 
     private var currentVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
