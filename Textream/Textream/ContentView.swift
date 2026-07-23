@@ -19,7 +19,7 @@ struct ContentView: View {
     @State private var editorCaretPosition: Int = 0
     @State private var isDroppingPresentation = false
     @State private var dropError: String?
-    @State private var dropAlertTitle: String = "Import Error"
+    @State private var dropAlertTitle: String = LocalizedStrings.importError
     @State private var showSettings = false
     @State private var showAbout = false
     @FocusState private var isTextFocused: Bool
@@ -299,15 +299,15 @@ struct ContentView: View {
                         let ext = url.pathExtension.lowercased()
                         if ext == "key" {
                             DispatchQueue.main.async {
-                                dropAlertTitle = "Conversion Required"
-                                dropError = "Keynote files can't be imported directly. Please export your Keynote presentation as PowerPoint (.pptx) first, then drop the exported file here."
+                                dropAlertTitle = LocalizedStrings.conversionRequired
+                                dropError = LocalizedStrings.keynoteCannotImport
                             }
                             return
                         }
                         guard ext == "pptx" else {
                             DispatchQueue.main.async {
-                                dropAlertTitle = "Import Error"
-                                dropError = "Unsupported file. Drop a PowerPoint (.pptx) file."
+                                dropAlertTitle = LocalizedStrings.importError
+                                dropError = LocalizedStrings.unsupportedFile
                             }
                             return
                         }
@@ -410,7 +410,7 @@ struct ContentView: View {
             }
         }
         .alert(dropAlertTitle, isPresented: Binding(get: { dropError != nil }, set: { if !$0 { dropError = nil } })) {
-            Button("OK") { dropError = nil }
+            Button(LocalizedStrings.ok) { dropError = nil }
         } message: {
             Text(dropError ?? "")
         }
@@ -428,7 +428,7 @@ struct ContentView: View {
                                     .fill(.orange)
                                     .frame(width: 6, height: 6)
                             }
-                            Text(service.currentFileURL?.deletingPathExtension().lastPathComponent ?? "Untitled")
+                            Text(service.currentFileURL?.deletingPathExtension().lastPathComponent ?? LocalizedStrings.untitled)
                                 .font(.system(size: 11, weight: .medium))
                                 .lineLimit(1)
                         }
@@ -556,7 +556,7 @@ struct ContentView: View {
                         Button(role: .destructive) {
                             removePage(at: index)
                         } label: {
-                            Label("Delete Page", systemImage: "trash")
+                            Label(LocalizedStrings.deletePage, systemImage: "trash")
                         }
                     }
                 }
@@ -570,7 +570,7 @@ struct ContentView: View {
                     service.currentPageIndex = service.pages.count - 1
                 }
             } label: {
-                Label("Add Page", systemImage: "plus")
+                Label(LocalizedStrings.addPage, systemImage: "plus")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -665,7 +665,7 @@ struct AboutView: View {
 
             // App name & version
             VStack(spacing: 4) {
-                Text("Textream")
+                Text(LocalizedStrings.appName)
                     .font(.system(size: 20, weight: .bold))
                 Text("\(LocalizedStrings.version) \(appVersion)")
                     .font(.system(size: 12))

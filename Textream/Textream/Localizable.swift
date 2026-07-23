@@ -213,6 +213,100 @@ struct LocalizedStrings {
     // MARK: - Language
     static var language: String { isChinese ? "语言" : "Language" }
     static var followSystem: String { isChinese ? "跟随系统" : "System Default" }
+
+    // MARK: - NotchSettings Enums (OverlayMode)
+    static var overlayPinned: String { isChinese ? "固定在刘海" : "Pinned to Notch" }
+    static var overlayFloating: String { isChinese ? "浮动窗口" : "Floating Window" }
+    static var overlayFullscreen: String { isChinese ? "全屏" : "Fullscreen" }
+    static var overlayPinnedDesc: String { isChinese ? "固定在屏幕顶部刘海下方。" : "Anchored below the notch at the top of your screen." }
+    static var overlayFloatingDesc: String { isChinese ? "可拖动的窗口，可放置在任何位置，始终置顶。" : "A draggable window you can place anywhere. Always on top." }
+    static var overlayFullscreenDesc: String { isChinese ? "在选定显示器上全屏提词器，按 Esc 停止。" : "Fullscreen teleprompter on the selected display. Press Esc to stop." }
+
+    // MARK: - NotchSettings Enums (NotchDisplayMode)
+    static var notchFollowMouse: String { isChinese ? "跟随鼠标" : "Follow Mouse" }
+    static var notchFixedDisplay: String { isChinese ? "固定显示器" : "Fixed Display" }
+    static var notchFollowMouseDesc: String { isChinese ? "刘海会跟随鼠标移动到当前显示器。" : "The notch moves to whichever display your mouse is on." }
+    static var notchFixedDisplayDesc: String { isChinese ? "刘海固定在选定的显示器上。" : "The notch stays on the selected display." }
+
+    // MARK: - NotchSettings Enums (ExternalDisplayMode)
+    static var externalOff: String { isChinese ? "关闭" : "Off" }
+    static var externalTeleprompter: String { isChinese ? "提词器" : "Teleprompter" }
+    static var externalMirror: String { isChinese ? "镜像" : "Mirror" }
+    static var externalOffDesc: String { isChinese ? "无外部显示器输出。" : "No external display output." }
+    static var externalTeleprompterDesc: String { isChinese ? "在选定显示器上全屏显示提词器。" : "Fullscreen teleprompter on the selected display." }
+    static var externalMirrorDesc: String { isChinese ? "水平翻转，用于提词器镜像支架。" : "Horizontally flipped for use with a prompter mirror rig." }
+
+    // MARK: - NotchSettings Enums (MirrorAxis)
+    static var mirrorHorizontal: String { isChinese ? "水平" : "Horizontal" }
+    static var mirrorVertical: String { isChinese ? "垂直" : "Vertical" }
+    static var mirrorBoth: String { isChinese ? "双向" : "Both" }
+    static var mirrorHorizontalDesc: String { isChinese ? "左右翻转。标准提词器镜像支架。" : "Flipped left-to-right. Standard for prompter mirror rigs." }
+    static var mirrorVerticalDesc: String { isChinese ? "上下翻转。" : "Flipped top-to-bottom." }
+    static var mirrorBothDesc: String { isChinese ? "双向翻转（旋转 180°）。" : "Flipped on both axes (rotated 180°)." }
+
+    // MARK: - NotchSettings Enums (ListeningMode)
+    static var listeningClassic: String { isChinese ? "经典模式" : "Classic" }
+    static var listeningSilencePaused: String { isChinese ? "语音激活" : "Voice-Activated" }
+    static var listeningWordTracking: String { isChinese ? "文字追踪" : "Word Tracking" }
+    static var listeningClassicDesc: String { isChinese ? "恒定速度自动滚动，无需麦克风。" : "Auto-scrolls at a constant speed. No microphone needed." }
+    static var listeningSilencePausedDesc: String { isChinese ? "说话时滚动，静音时暂停。" : "Scrolls while you speak, pauses when you're silent." }
+    static var listeningWordTrackingDesc: String { isChinese ? "实时追踪您说的每个词并高亮显示。" : "Tracks each word you say and highlights it in real time." }
+
+    // MARK: - NotchSettings Enums (FontSizePreset)
+    static var fontSizeXS: String { isChinese ? "极小" : "XS" }
+    static var fontSizeSM: String { isChinese ? "小" : "SM" }
+    static var fontSizeLG: String { isChinese ? "大" : "LG" }
+    static var fontSizeXL: String { isChinese ? "极大" : "XL" }
+
+    // MARK: - NotchSettings Enums (FontFamilyPreset)
+    static var fontSans: String { isChinese ? "无衬线" : "Sans" }
+    static var fontSerif: String { isChinese ? "衬线" : "Serif" }
+    static var fontMono: String { isChinese ? "等宽" : "Mono" }
+    static var fontDyslexia: String { isChinese ? "阅读障碍" : "Dyslexia" }
+
+    // MARK: - NotchSettings Enums (FontColorPreset)
+    static var colorWhite: String { isChinese ? "白色" : "White" }
+    static var colorYellow: String { isChinese ? "黄色" : "Yellow" }
+    static var colorGreen: String { isChinese ? "绿色" : "Green" }
+    static var colorBlue: String { isChinese ? "蓝色" : "Blue" }
+    static var colorPink: String { isChinese ? "粉色" : "Pink" }
+    static var colorOrange: String { isChinese ? "橙色" : "Orange" }
+
+    // MARK: - ContentView (hardcoded strings)
+    static var deletePage: String { isChinese ? "删除页面" : "Delete Page" }
+    static var addPage: String { isChinese ? "添加页面" : "Add Page" }
+
+    // MARK: - Dictation / Speech errors
+    static var micAccessDenied: String { isChinese ? "麦克风访问被拒绝。请在系统设置 → 隐私与安全性 → 麦克风中允许 Textream。" : "Microphone access denied. Open System Settings → Privacy & Security → Microphone to allow Textream." }
+    static var micAccessDeniedShort: String { isChinese ? "麦克风访问被拒绝。" : "Microphone access denied." }
+    static var speechNotAuthorized: String { isChinese ? "语音识别未授权。请在系统设置 → 隐私与安全性 → 语音识别中允许 Textream。" : "Speech recognition not authorized. Open System Settings → Privacy & Security → Speech Recognition to allow Textream." }
+    static var speechNotAvailable: String { isChinese ? "语音识别不可用" : "Speech recognizer not available" }
+    static var audioInputUnavailable: String { isChinese ? "音频输入不可用" : "Audio input unavailable" }
+    static var audioEngineFailed: String { isChinese ? "音频引擎失败：%@" : "Audio engine failed: %@" }
+
+    // MARK: - PresentationNotesExtractor errors
+    static var unsupportedFileFormat: String { isChinese ? "不支持的文件格式。请拖放 .pptx 或 .key 文件。" : "Unsupported file format. Please drop a .pptx or .key file." }
+    static var failedToExtractNotes: String { isChinese ? "提取备注失败：%@" : "Failed to extract notes: %@" }
+    static var noNotesFound: String { isChinese ? "此演示文稿中未找到演讲者备注。" : "No presenter notes found in this presentation." }
+    static var couldNotUnzip: String { isChinese ? "无法解压 PPTX 文件。" : "Could not unzip PPTX file." }
+
+    // MARK: - TextreamService
+    static var noTextOnPasteboard: String { isChinese ? "剪贴板中未找到文本" : "No text found on pasteboard" }
+
+    // MARK: - Director/Browser HTML
+    static var directorWaiting: String { isChinese ? "等待 Textream…" : "Waiting for Textream…" }
+    static var directorStartReading: String { isChinese ? "在应用中开始朗读，即可在此查看提词器" : "Start reading in the app to see your teleprompter here" }
+    static var connected: String { isChinese ? "已连接" : "Connected" }
+    static var reconnecting: String { isChinese ? "重新连接中…" : "Reconnecting…" }
+    static var stop: String { isChinese ? "停止" : "Stop" }
+    static var doneLabel: String { isChinese ? "完成！" : "Done!" }
+
+    // MARK: - SettingsView
+    static var advanced: String { isChinese ? "高级" : "Advanced" }
+    static var restart: String { isChinese ? "重启" : "Restart" }
+    static var wordsPerSecond: String { isChinese ? "%.1f 字/秒" : "%.1f words/s" }
+    static var cueColor: String { isChinese ? "提示色" : "Cue Color" }
+    static var brightness: String { isChinese ? "亮度" : "Brightness" }
 }
 
 // Helper view modifier for localization

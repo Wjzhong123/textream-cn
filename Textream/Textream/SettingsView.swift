@@ -666,7 +666,7 @@ struct SettingsView: View {
                         Text(LocalizedStrings.scrollSpeed)
                             .font(.system(size: 13, weight: .medium))
                         Spacer()
-                        Text(String(format: "%.1f words/s", settings.scrollSpeed))
+                        Text(String(format: LocalizedStrings.wordsPerSecond, settings.scrollSpeed))
                             .font(.system(size: 12, weight: .regular, design: .monospaced))
                             .foregroundStyle(.secondary)
                     }
@@ -994,13 +994,13 @@ struct SettingsView: View {
                         .fill(Color.accentColor.opacity(0.08))
                 )
 
-                DisclosureGroup("Advanced", isExpanded: $showAdvanced) {
+                DisclosureGroup(LocalizedStrings.advanced, isExpanded: $showAdvanced) {
                     VStack(alignment: .leading, spacing: 10) {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(LocalizedStrings.port)
                                 .font(.system(size: 13, weight: .medium))
                             HStack(spacing: 8) {
-                                TextField("Port", text: Binding(
+                                TextField(LocalizedStrings.port, text: Binding(
                                     get: { String(settings.browserServerPort) },
                                     set: { str in
                                         if let val = UInt16(str), val >= 1024 {
@@ -1017,7 +1017,7 @@ struct SettingsView: View {
 
                                 Spacer()
 
-                                Button("Restart") {
+                                Button(LocalizedStrings.restart) {
                                     TextreamService.shared.browserServer.stop()
                                     TextreamService.shared.browserServer.start()
                                     localIP = BrowserServer.localIPAddress() ?? "localhost"
@@ -1117,13 +1117,13 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                DisclosureGroup("Advanced", isExpanded: $showDirectorAdvanced) {
+                DisclosureGroup(LocalizedStrings.advanced, isExpanded: $showDirectorAdvanced) {
                     VStack(alignment: .leading, spacing: 10) {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(LocalizedStrings.port)
                                 .font(.system(size: 13, weight: .medium))
                             HStack(spacing: 8) {
-                                TextField("Port", text: Binding(
+                                TextField(LocalizedStrings.port, text: Binding(
                                     get: { String(settings.directorServerPort) },
                                     set: { str in
                                         if let val = UInt16(str), val >= 1024 {
@@ -1140,7 +1140,7 @@ struct SettingsView: View {
 
                                 Spacer()
 
-                                Button("Restart") {
+                                Button(LocalizedStrings.restart) {
                                     TextreamService.shared.directorServer.stop()
                                     TextreamService.shared.directorServer.start()
                                     directorLocalIP = BrowserServer.localIPAddress() ?? "localhost"

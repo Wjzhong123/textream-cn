@@ -177,7 +177,7 @@ class TextreamService: NSObject, ObservableObject {
     func saveFileAs() {
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.init(filenameExtension: "textream")!]
-        panel.nameFieldStringValue = "Untitled.textream"
+        panel.nameFieldStringValue = "\(LocalizedStrings.untitled).textream"
         panel.canCreateDirectories = true
 
         panel.begin { [weak self] response in
@@ -436,7 +436,7 @@ class TextreamService: NSObject, ObservableObject {
     // macOS Services handler
     @objc func readInTextream(_ pboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString?>) {
         guard let text = pboard.string(forType: .string) else {
-            error.pointee = "No text found on pasteboard" as NSString
+            error.pointee = LocalizedStrings.noTextOnPasteboard as NSString
             return
         }
         readText(text)

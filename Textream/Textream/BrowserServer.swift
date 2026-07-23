@@ -376,9 +376,9 @@ class BrowserServer {
 
         <div id="waiting">
           <div class="icon">📡</div>
-          <div class="title">Waiting for Textream…</div>
-          <div class="sub">Start reading in the app to see your teleprompter here</div>
-          <div class="url" id="conn-status">Connecting…</div>
+          <div class="title">\(LocalizedStrings.directorWaiting)</div>
+          <div class="sub">\(LocalizedStrings.directorStartReading)</div>
+          <div class="url" id="conn-status">\(LocalizedStrings.connecting)</div>
         </div>
 
         <div id="main">
@@ -394,7 +394,7 @@ class BrowserServer {
 
         <div id="done">
           <div class="check">✓</div>
-          <div class="label">Done!</div>
+          <div class="label">\(LocalizedStrings.doneLabel)</div>
         </div>
 
         <script>
@@ -433,10 +433,10 @@ class BrowserServer {
         function connect(){
           ws=new WebSocket('ws://'+host+':'+WSP);
           ws.onopen=()=>{clearTimeout(rt);
-            document.getElementById('conn-status').textContent='Connected';};
+            document.getElementById('conn-status').textContent='\(LocalizedStrings.connected)';};
           ws.onmessage=e=>{try{render(JSON.parse(e.data))}catch(x){console.error(x)}};
           ws.onclose=()=>{
-            document.getElementById('conn-status').textContent='Reconnecting…';
+            document.getElementById('conn-status').textContent='\(LocalizedStrings.reconnecting)';
             rt=setTimeout(connect,1500);};
           ws.onerror=()=>{ws.close()};
         }
