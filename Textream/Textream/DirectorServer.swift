@@ -18,6 +18,7 @@ struct DirectorState: Codable {
     let isDone: Bool
     let isListening: Bool
     let fontColor: String
+    let cueColor: String
     let lastSpokenText: String
     let audioLevels: [Double]
 }
@@ -272,6 +273,7 @@ class DirectorServer {
             isDone: isDone,
             isListening: speechRecognizer?.isListening ?? false,
             fontColor: NotchSettings.shared.fontColorPreset.cssColor,
+            cueColor: NotchSettings.shared.cueColorPreset.cssColor,
             lastSpokenText: speechRecognizer?.lastSpokenText ?? "",
             audioLevels: (speechRecognizer?.audioLevels ?? []).map { Double($0) }
         )
@@ -282,7 +284,7 @@ class DirectorServer {
         let state = DirectorState(
             words: [], highlightedCharCount: 0, totalCharCount: 0,
             isActive: false, isDone: false, isListening: false,
-            fontColor: "#ffffff", lastSpokenText: "",
+            fontColor: "#ffffff", cueColor: "#ffffff", lastSpokenText: "",
             audioLevels: []
         )
         broadcast(state)

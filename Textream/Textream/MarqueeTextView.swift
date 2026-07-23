@@ -81,6 +81,9 @@ struct SpeechScrollView: View {
     let highlightedCharCount: Int
     var font: NSFont = .systemFont(ofSize: 18, weight: .semibold)
     var highlightColor: Color = .white
+    var cueColor: Color = .white
+    var cueUnreadOpacity: Double = 0.2
+    var cueReadOpacity: Double = 0.5
     var onWordTap: ((Int) -> Void)? = nil
     /// Called when user starts/stops manual scrolling in smooth mode.
     /// Bool: true = scrolling started (pause timer), false = scrolling ended (resume timer).
@@ -104,6 +107,9 @@ struct SpeechScrollView: View {
                 highlightedCharCount: highlightedCharCount,
                 font: font,
                 highlightColor: highlightColor,
+                cueColor: cueColor,
+                cueUnreadOpacity: cueUnreadOpacity,
+                cueReadOpacity: cueReadOpacity,
                 highlightWords: !smoothScroll,
                 containerWidth: geo.size.width,
                 onWordTap: { charOffset in
@@ -328,6 +334,9 @@ struct WordFlowLayout: View {
     let highlightedCharCount: Int
     let font: NSFont
     var highlightColor: Color = .white
+    var cueColor: Color = .white
+    var cueUnreadOpacity: Double = 0.2
+    var cueReadOpacity: Double = 0.5
     var highlightWords: Bool = true
     let containerWidth: CGFloat
     var onWordTap: ((Int) -> Void)? = nil
@@ -422,7 +431,7 @@ struct WordFlowLayout: View {
         // When highlighting is off (classic/silence-paused), use uniform color
         if !highlightWords {
             let uniformColor: Color = item.isAnnotation
-                ? Color.white.opacity(0.4)
+                ? cueColor.opacity(cueUnreadOpacity)
                 : highlightColor
 
             return Text(item.word + " ")
@@ -442,11 +451,11 @@ struct WordFlowLayout: View {
                 }
         }
 
-        // Annotations: italic, always dimmed
+        // Annotations: italic, dimmed with cue color
         if item.isAnnotation {
             let annotationColor: Color = isFullyLit
-                ? Color.white.opacity(0.5)
-                : Color.white.opacity(0.2)
+                ? cueColor.opacity(cueReadOpacity)
+                : cueColor.opacity(cueUnreadOpacity)
 
             return Text(item.word + " ")
                 .font(Font(font).italic())
@@ -494,8 +503,9 @@ struct WordFlowLayout: View {
     private func buildItems() -> [WordItem] {
         var items: [WordItem] = []
         var offset = 0
+        let annotationFlags = SpeechTextAlignment.annotationFlags(for: words)
         for (i, word) in words.enumerated() {
-            let isAnnotation = Self.isAnnotationWord(word)
+            let isAnnotation = annotationFlags[i] || Self.isAnnotationWord(word)
             items.append(WordItem(id: i, word: word, charOffset: offset, isAnnotation: isAnnotation))
             offset += word.count + 1 // +1 for space
         }

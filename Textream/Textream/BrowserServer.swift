@@ -18,6 +18,7 @@ struct BrowserState: Codable {
     let isListening: Bool
     let isDone: Bool
     let fontColor: String
+    let cueColor: String
     let hasNextPage: Bool
     let isActive: Bool
     let highlightWords: Bool
@@ -186,21 +187,28 @@ class BrowserServer {
 
         let charCount: Int
         let mode = NotchSettings.shared.listeningMode
+        // Check if scroll already reached the end, to stop advancing the timer
+        let scrollDone = totalCharCount > 0 && charOffsetForWordProgress(timerWordProgress) >= totalCharCount
         switch mode {
         case .wordTracking:
             charCount = speechRecognizer?.recognizedCharCount ?? 0
         case .classic:
-            timerWordProgress += NotchSettings.shared.scrollSpeed * 0.1
+            if !scrollDone {
+                timerWordProgress += NotchSettings.shared.scrollSpeed * 0.1
+            }
             charCount = charOffsetForWordProgress(timerWordProgress)
         case .silencePaused:
-            if speechRecognizer?.isListening == true && (speechRecognizer?.isSpeaking ?? false) {
+            if !scrollDone && speechRecognizer?.isListening == true && (speechRecognizer?.isSpeaking ?? false) {
                 timerWordProgress += NotchSettings.shared.scrollSpeed * 0.1
             }
             charCount = charOffsetForWordProgress(timerWordProgress)
         }
 
         let effective = min(charCount, totalCharCount)
-        let isDone = totalCharCount > 0 && effective >= totalCharCount
+        let rawDone = totalCharCount > 0 && effective >= totalCharCount
+        // In classic/silence-paused modes on the last page, suppress Done so the
+        // browser keeps showing the prompter text (speaker may still be talking).
+        let isDone = rawDone && (mode == .wordTracking || hasNextPage)
 
         let highlightWords = mode == .wordTracking
 
@@ -212,6 +220,7 @@ class BrowserServer {
             isListening: speechRecognizer?.isListening ?? false,
             isDone: isDone,
             fontColor: NotchSettings.shared.fontColorPreset.cssColor,
+            cueColor: NotchSettings.shared.cueColorPreset.cssColor,
             hasNextPage: hasNextPage,
             isActive: true,
             highlightWords: highlightWords,
@@ -224,7 +233,7 @@ class BrowserServer {
         let state = BrowserState(
             words: [], highlightedCharCount: 0, totalCharCount: 0,
             audioLevels: [], isListening: false, isDone: false,
-            fontColor: "#ffffff", hasNextPage: false, isActive: false,
+            fontColor: "#ffffff", cueColor: "#ffffff", hasNextPage: false, isActive: false,
             highlightWords: true, lastSpokenText: ""
         )
         broadcast(state)
@@ -457,7 +466,9 @@ class BrowserServer {
           const c=document.getElementById('text-container'),
                 words=s.words||[],
                 fc=s.fontColor||'#ffffff',
+                cc=s.cueColor||fc,
                 rgb=parseColor(fc),
+                crgb=parseColor(cc),
                 hlWords=s.highlightWords!==false,
                 hcc=s.highlightedCharCount||0;
 
@@ -510,10 +521,10 @@ class BrowserServer {
 
             if(!hlWords){
               // Classic / silence-paused: uniform color, no per-word highlight
-              color=ann?'rgba(255,255,255,0.4)':fc;
+              color=ann?rgba(crgb,0.4):fc;
             } else if(ann){
-              // Annotation: italic, white with varying opacity
-              color=isFullyLit?'rgba(255,255,255,0.5)':'rgba(255,255,255,0.2)';
+              // Annotation: cue color with varying opacity
+              color=isFullyLit?rgba(crgb,0.5):rgba(crgb,0.2);
             } else if(isFullyLit){
               // Already read: dimmed
               color=rgba(rgb,0.3);

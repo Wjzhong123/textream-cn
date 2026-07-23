@@ -176,7 +176,7 @@ struct ExternalDisplayView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            if isDone {
+            if isDone && (listeningMode == .wordTracking || hasNextPage) {
                 doneView
             } else {
                 prompterView
@@ -192,7 +192,7 @@ struct ExternalDisplayView: View {
         .scaleEffect(x: mirrorAxis?.scaleX ?? 1, y: mirrorAxis?.scaleY ?? 1)
         .animation(.easeInOut(duration: 0.5), value: isDone)
         .onChange(of: isDone) { _, done in
-            if done {
+            if done && listeningMode == .wordTracking {
                 speechRecognizer.stop()
             }
         }
@@ -225,6 +225,9 @@ struct ExternalDisplayView: View {
                     highlightedCharCount: effectiveCharCount,
                     font: .systemFont(ofSize: fontSize, weight: .semibold),
                     highlightColor: NotchSettings.shared.fontColorPreset.color,
+                    cueColor: NotchSettings.shared.cueColorPreset.color,
+                    cueUnreadOpacity: NotchSettings.shared.cueBrightness.unreadOpacity,
+                    cueReadOpacity: NotchSettings.shared.cueBrightness.readOpacity,
                     onWordTap: { charOffset in
                         if listeningMode == .wordTracking {
                             speechRecognizer.jumpTo(charOffset: charOffset)

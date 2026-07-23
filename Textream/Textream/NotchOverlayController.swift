@@ -45,6 +45,8 @@ class OverlayContent {
 }
 
 class NotchOverlayController: NSObject {
+    private let cursorOffset: CGFloat = 8
+    private let screenEdgeMargin: CGFloat = 5
     private var panel: NSPanel?
     let speechRecognizer = SpeechRecognizer()
     let overlayContent = OverlayContent()
@@ -61,7 +63,7 @@ class NotchOverlayController: NSObject {
 
     func show(text: String, hasNextPage: Bool = false, onComplete: (() -> Void)? = nil) {
         self.onComplete = onComplete
-        self.onNextPage = { [weak self] in
+        self.onNextPage = {
             TextreamService.shared.advanceToNextPage()
         }
         self.isDismissing = false
@@ -174,21 +176,23 @@ class NotchOverlayController: NSObject {
     private func updateCursorPosition() {
         guard let panel else { return }
         let mouse = NSEvent.mouseLocation
-        let cursorOffset: CGFloat = 8
-        let x = mouse.x + cursorOffset
-        let h = panel.frame.height
-        var y = mouse.y - h
-        let w = panel.frame.width
+        guard let screen = screenUnderMouse() ?? panel.screen ?? NSScreen.main else { return }
+        let frame = cursorFollowingFrame(mouse: mouse, panelSize: panel.frame.size, screen: screen)
+        panel.setFrame(frame, display: false)
+    }
 
-        // Keep panel below the menu bar so the status bar stop button stays visible
-        if let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) {
-            let menuBarBottom = screen.visibleFrame.maxY
-            if y + h > menuBarBottom {
-                y = menuBarBottom - h
-            }
-        }
+    private func cursorFollowingFrame(mouse: NSPoint, panelSize: NSSize, screen: NSScreen) -> NSRect {
+        let screenFrame = screen.frame
 
-        panel.setFrame(NSRect(x: x, y: y, width: w, height: h), display: false)
+        let minimumX = screenFrame.minX + screenEdgeMargin
+        let maximumX = max(minimumX, screenFrame.maxX - panelSize.width - screenEdgeMargin)
+        let x = min(max(mouse.x + cursorOffset, minimumX), maximumX)
+
+        let minimumY = screenFrame.minY + screenEdgeMargin
+        let maximumY = max(minimumY, screen.visibleFrame.maxY - panelSize.height)
+        let y = min(max(mouse.y - panelSize.height, minimumY), maximumY)
+
+        return NSRect(origin: NSPoint(x: x, y: y), size: panelSize)
     }
 
     private func checkMouseScreen() {
@@ -263,6 +267,8 @@ class NotchOverlayController: NSObject {
         if settings.notchDisplayMode == .followMouse {
             startMouseTracking()
         }
+
+        installKeyMonitor()
     }
 
     private func showFollowCursor(settings: NotchSettings, screen: NSScreen) {
@@ -270,9 +276,12 @@ class NotchOverlayController: NSObject {
         let panelHeight = settings.textAreaHeight
 
         let mouse = NSEvent.mouseLocation
-        let cursorOffset: CGFloat = 8
-        let xPosition = mouse.x + cursorOffset
-        let yPosition = mouse.y - panelHeight
+        let cursorScreen = screenUnderMouse() ?? screen
+        let initialFrame = cursorFollowingFrame(
+            mouse: mouse,
+            panelSize: NSSize(width: panelWidth, height: panelHeight),
+            screen: cursorScreen
+        )
 
         let floatingView = FloatingOverlayView(
             content: overlayContent,
@@ -283,7 +292,7 @@ class NotchOverlayController: NSObject {
         let contentView = NSHostingView(rootView: floatingView)
 
         let panel = NSPanel(
-            contentRect: NSRect(x: xPosition, y: yPosition, width: panelWidth, height: panelHeight),
+            contentRect: initialFrame,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -374,21 +383,27 @@ class NotchOverlayController: NSObject {
     }
 
     func dismiss() {
+        guard !isDismissing else { return }
+        isDismissing = true
+
         // Trigger the shrink animation
         speechRecognizer.shouldDismiss = true
         speechRecognizer.forceStop()
 
         // Wait for animation, then remove panel
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-            self?.stopMouseTracking()
-            self?.stopCursorTracking()
-            self?.removeStopButton()
-            self?.removeEscMonitor()
-            self?.panel?.orderOut(nil)
-            self?.panel = nil
-            self?.frameTracker = nil
-            self?.speechRecognizer.shouldDismiss = false
-            self?.onComplete?()
+            guard let self else { return }
+            self.stopMouseTracking()
+            self.stopCursorTracking()
+            self.removeStopButton()
+            self.removeEscMonitor()
+            self.cancellables.removeAll()
+            self.panel?.orderOut(nil)
+            self.panel = nil
+            self.frameTracker = nil
+            self.speechRecognizer.shouldDismiss = false
+            self.isDismissing = false
+            self.onComplete?()
         }
     }
 
@@ -424,41 +439,40 @@ class NotchOverlayController: NSObject {
     }
 
     private func observeDismiss() {
-        // Poll for shouldAdvancePage (next page requested from overlay)
+        // Single timer polls all conditions instead of two separate timers
         Timer.publish(every: 0.1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
                 guard let self else { return }
+
+                // Check for page advance
                 if self.speechRecognizer.shouldAdvancePage {
                     self.speechRecognizer.shouldAdvancePage = false
                     self.onNextPage?()
                 }
-                // Poll for page jump from page picker
+
+                // Check for page jump from page picker
                 if let targetIndex = self.overlayContent.jumpToPageIndex {
                     self.overlayContent.jumpToPageIndex = nil
                     TextreamService.shared.jumpToPage(index: targetIndex)
                 }
-            }
-            .store(in: &cancellables)
 
-        // Poll for shouldDismiss becoming true (from view setting it on completion)
-        Timer.publish(every: 0.1, on: .main, in: .common)
-            .autoconnect()
-            .sink { [weak self] _ in
-                guard let self, self.speechRecognizer.shouldDismiss, !self.isDismissing else { return }
-                self.isDismissing = true
-                // Wait for shrink animation, then cleanup
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                    self.stopMouseTracking()
-                    self.stopCursorTracking()
-                    self.removeStopButton()
-                    self.removeEscMonitor()
-                    self.cancellables.removeAll()
-                    self.panel?.orderOut(nil)
-                    self.panel = nil
-                    self.frameTracker = nil
-                    self.speechRecognizer.shouldDismiss = false
-                    self.onComplete?()
+                // Check for dismiss
+                if self.speechRecognizer.shouldDismiss, !self.isDismissing {
+                    self.isDismissing = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                        guard let self else { return }
+                        self.stopMouseTracking()
+                        self.stopCursorTracking()
+                        self.removeStopButton()
+                        self.removeEscMonitor()
+                        self.cancellables.removeAll()
+                        self.panel?.orderOut(nil)
+                        self.panel = nil
+                        self.frameTracker = nil
+                        self.speechRecognizer.shouldDismiss = false
+                        self.onComplete?()
+                    }
                 }
             }
             .store(in: &cancellables)
@@ -532,6 +546,19 @@ struct StopButtonView: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+// MARK: - Notch Blur View (for transparency mode)
+
+struct NotchBlurView: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let v = NSVisualEffectView()
+        v.blendingMode = .behindWindow
+        v.material = .hudWindow
+        v.state = .active
+        return v
+    }
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
 }
 
 // MARK: - Dynamic Island Shape (concave top corners, convex bottom corners)
@@ -699,13 +726,34 @@ struct NotchOverlayView: View {
             let currentWidth = notchWidth + (geo.size.width - notchWidth) * expansion
 
             ZStack(alignment: .top) {
-                // Container shape
-                DynamicIslandShape(
-                    topInset: currentTopInset,
-                    bottomRadius: currentBottomRadius
-                )
-                .fill(.black)
-                .frame(width: currentWidth, height: currentHeight)
+                // Container shape — solid black or transparent with blur
+                let isTransparent = NotchSettings.shared.overlayTransparency
+                let transparencyOpacity = NotchSettings.shared.overlayTransparencyOpacity
+
+                if isTransparent {
+                    // Blurred background layer clipped to the Dynamic Island shape
+                    NotchBlurView()
+                        .clipShape(DynamicIslandShape(
+                            topInset: currentTopInset,
+                            bottomRadius: currentBottomRadius
+                        ))
+                        .frame(width: currentWidth, height: currentHeight)
+
+                    // Dark tint overlay so text remains readable
+                    DynamicIslandShape(
+                        topInset: currentTopInset,
+                        bottomRadius: currentBottomRadius
+                    )
+                    .fill(.black.opacity(1.0 - transparencyOpacity))
+                    .frame(width: currentWidth, height: currentHeight)
+                } else {
+                    DynamicIslandShape(
+                        topInset: currentTopInset,
+                        bottomRadius: currentBottomRadius
+                    )
+                    .fill(.black)
+                    .frame(width: currentWidth, height: currentHeight)
+                }
 
                 // Content - appears after container expands
                 if contentVisible {
@@ -721,7 +769,7 @@ struct NotchOverlayView: View {
 
                         if content.showPagePicker {
                             pagePickerView
-                        } else if isDone {
+                        } else if isDone && (listeningMode == .wordTracking || hasNextPage) {
                             doneView
                         } else {
                             prompterView
@@ -765,12 +813,19 @@ struct NotchOverlayView: View {
         .animation(.easeInOut(duration: 0.5), value: isDone)
         .onChange(of: isDone) { _, done in
             if done {
-                // Stop listening when page is done
-                speechRecognizer.stop()
+                // In word tracking mode, stop listening when page is done
+                if listeningMode == .wordTracking {
+                    speechRecognizer.stop()
+                }
                 if !hasNextPage {
-                    // Show "Done" briefly, then auto-dismiss
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        speechRecognizer.shouldDismiss = true
+                    // Only auto-dismiss in word tracking mode.
+                    // In classic/silence-paused modes the speaker may still be
+                    // talking after the auto-scroll finishes, so keep the text
+                    // visible and let them dismiss manually (X button or Esc).
+                    if listeningMode == .wordTracking {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                            speechRecognizer.shouldDismiss = true
+                        }
                     }
                 } else if NotchSettings.shared.autoNextPage {
                     startCountdown()
@@ -823,6 +878,9 @@ struct NotchOverlayView: View {
                 highlightedCharCount: effectiveCharCount,
                 font: NotchSettings.shared.font,
                 highlightColor: NotchSettings.shared.fontColorPreset.color,
+                cueColor: NotchSettings.shared.cueColorPreset.color,
+                cueUnreadOpacity: NotchSettings.shared.cueBrightness.unreadOpacity,
+                cueReadOpacity: NotchSettings.shared.cueBrightness.readOpacity,
                 onWordTap: { charOffset in
                     if listeningMode == .wordTracking {
                         speechRecognizer.jumpTo(charOffset: charOffset)
@@ -855,7 +913,15 @@ struct NotchOverlayView: View {
                 .frame(width: 80, height: 24)
                 .clipped()
 
-                if listeningMode == .wordTracking {
+                if let error = speechRecognizer.error {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.red.opacity(0.9))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .help(error)
+                } else if listeningMode == .wordTracking {
                     Text(speechRecognizer.lastSpokenText.split(separator: " ").suffix(3).joined(separator: " "))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.white.opacity(0.5))
@@ -920,18 +986,26 @@ struct NotchOverlayView: View {
                     .buttonStyle(.plain)
                 } else {
                     Button {
-                        if speechRecognizer.isListening {
+                        if speechRecognizer.isListening || speechRecognizer.isStarting {
                             speechRecognizer.stop()
                         } else {
                             speechRecognizer.resume()
                         }
                     } label: {
-                        Image(systemName: speechRecognizer.isListening ? "mic.fill" : "mic.slash.fill")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(speechRecognizer.isListening ? .yellow.opacity(0.8) : .white.opacity(0.6))
-                            .frame(width: 24, height: 24)
-                            .background(.white.opacity(0.15))
-                            .clipShape(Circle())
+                        Group {
+                            if speechRecognizer.isStarting {
+                                ProgressView()
+                                    .controlSize(.mini)
+                                    .tint(.white.opacity(0.8))
+                            } else {
+                                Image(systemName: speechRecognizer.isListening ? "mic.fill" : "mic.slash.fill")
+                                    .font(.system(size: 10, weight: .bold))
+                            }
+                        }
+                        .foregroundStyle(speechRecognizer.isListening ? .yellow.opacity(0.8) : .white.opacity(0.6))
+                        .frame(width: 24, height: 24)
+                        .background(.white.opacity(0.15))
+                        .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
                 }
@@ -1210,7 +1284,7 @@ struct FloatingOverlayView: View {
         VStack(spacing: 0) {
             if content.showPagePicker {
                 floatingPagePickerView
-            } else if isDone {
+            } else if isDone && (listeningMode == .wordTracking || hasNextPage) {
                 floatingDoneView
             } else {
                 floatingPrompterView
@@ -1257,11 +1331,14 @@ struct FloatingOverlayView: View {
         .animation(.easeInOut(duration: 0.5), value: isDone)
         .onChange(of: isDone) { _, done in
             if done {
-                // Stop listening when page is done
-                speechRecognizer.stop()
+                if listeningMode == .wordTracking {
+                    speechRecognizer.stop()
+                }
                 if !hasNextPage {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                        speechRecognizer.shouldDismiss = true
+                    if listeningMode == .wordTracking {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                            speechRecognizer.shouldDismiss = true
+                        }
                     }
                 } else if followingCursor || NotchSettings.shared.autoNextPage {
                     startCountdown()
@@ -1298,6 +1375,9 @@ struct FloatingOverlayView: View {
                 highlightedCharCount: effectiveCharCount,
                 font: NotchSettings.shared.font,
                 highlightColor: NotchSettings.shared.fontColorPreset.color,
+                cueColor: NotchSettings.shared.cueColorPreset.color,
+                cueUnreadOpacity: NotchSettings.shared.cueBrightness.unreadOpacity,
+                cueReadOpacity: NotchSettings.shared.cueBrightness.readOpacity,
                 onWordTap: { charOffset in
                     if listeningMode == .wordTracking {
                         speechRecognizer.jumpTo(charOffset: charOffset)
@@ -1327,7 +1407,15 @@ struct FloatingOverlayView: View {
                 )
                 .frame(width: 160, height: 24)
 
-                if listeningMode == .wordTracking {
+                if let error = speechRecognizer.error {
+                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.red.opacity(0.9))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .help(error)
+                } else if listeningMode == .wordTracking {
                     Text(speechRecognizer.lastSpokenText.split(separator: " ").suffix(3).joined(separator: " "))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.white.opacity(0.5))
@@ -1393,18 +1481,26 @@ struct FloatingOverlayView: View {
                         .buttonStyle(.plain)
                     } else {
                         Button {
-                            if speechRecognizer.isListening {
+                            if speechRecognizer.isListening || speechRecognizer.isStarting {
                                 speechRecognizer.stop()
                             } else {
                                 speechRecognizer.resume()
                             }
                         } label: {
-                            Image(systemName: speechRecognizer.isListening ? "mic.fill" : "mic.slash.fill")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(speechRecognizer.isListening ? .yellow.opacity(0.8) : .white.opacity(0.6))
-                                .frame(width: 24, height: 24)
-                                .background(.white.opacity(0.15))
-                                .clipShape(Circle())
+                            Group {
+                                if speechRecognizer.isStarting {
+                                    ProgressView()
+                                        .controlSize(.mini)
+                                        .tint(.white.opacity(0.8))
+                                } else {
+                                    Image(systemName: speechRecognizer.isListening ? "mic.fill" : "mic.slash.fill")
+                                        .font(.system(size: 10, weight: .bold))
+                                }
+                            }
+                            .foregroundStyle(speechRecognizer.isListening ? .yellow.opacity(0.8) : .white.opacity(0.6))
+                            .frame(width: 24, height: 24)
+                            .background(.white.opacity(0.15))
+                            .clipShape(Circle())
                         }
                         .buttonStyle(.plain)
                     }

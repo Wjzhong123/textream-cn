@@ -105,12 +105,33 @@ class NotchPreviewController {
     private func cursorFrame(for panel: NSPanel, settings: NotchSettings) -> NSRect {
         let mouse = NSEvent.mouseLocation
         let cursorOffset: CGFloat = 8
+        let screenEdgeMargin: CGFloat = 5
+        let floatingTopPadding: CGFloat = 14
+        let floatingVerticalOffset: CGFloat = 60
         let maxWidth = panel.frame.width
         let notchWidth = settings.notchWidth
         let panelHeight = panel.frame.height
+        let visibleHeight = floatingTopPadding + settings.textAreaHeight
+        let horizontalInset = (maxWidth - notchWidth) / 2
 
-        let panelX = mouse.x + cursorOffset - (maxWidth - notchWidth) / 2
-        let panelY = mouse.y + 60 - panelHeight
+        var visibleLeft = mouse.x + cursorOffset
+        var visibleBottom = mouse.y - visibleHeight
+
+        if let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) })
+            ?? panel.screen
+            ?? NSScreen.main {
+            let screenFrame = screen.frame
+            let minimumVisibleLeft = screenFrame.minX + screenEdgeMargin
+            let maximumVisibleLeft = max(
+                minimumVisibleLeft,
+                screenFrame.maxX - notchWidth - screenEdgeMargin
+            )
+            visibleLeft = min(max(visibleLeft, minimumVisibleLeft), maximumVisibleLeft)
+            visibleBottom = max(visibleBottom, screenFrame.minY + screenEdgeMargin)
+        }
+
+        let panelX = visibleLeft - horizontalInset
+        let panelY = visibleBottom - (panelHeight - floatingVerticalOffset - visibleHeight)
         return NSRect(x: panelX, y: panelY, width: maxWidth, height: panelHeight)
     }
 
@@ -139,7 +160,7 @@ struct NotchPreviewContent: View {
     @Bindable var settings: NotchSettings
     let menuBarHeight: CGFloat
 
-    private static let loremWords = "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium totam rem aperiam eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt".split(separator: " ").map(String.init)
+    private static let loremWords = "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor [pause] incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium totam rem aperiam eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt".split(separator: " ").map(String.init)
 
     private let highlightedCount = 42
     @State private var previewWordProgress: Double = 0
@@ -159,11 +180,29 @@ struct NotchPreviewContent: View {
 
             ZStack(alignment: .top) {
                 // Shape: concave corners flatten via cornerPhase, then cross-fade to rounded via offsetPhase
-                DynamicIslandShape(
-                    topInset: 16 * (1 - cornerPhase),
-                    bottomRadius: 18
-                )
-                .fill(.black)
+                let isTransparent = settings.overlayTransparency && settings.overlayMode == .pinned
+                Group {
+                    if isTransparent {
+                        ZStack {
+                            NotchBlurView()
+                            DynamicIslandShape(
+                                topInset: 16 * (1 - cornerPhase),
+                                bottomRadius: 18
+                            )
+                            .fill(.black.opacity(1.0 - settings.overlayTransparencyOpacity))
+                        }
+                        .clipShape(DynamicIslandShape(
+                            topInset: 16 * (1 - cornerPhase),
+                            bottomRadius: 18
+                        ))
+                    } else {
+                        DynamicIslandShape(
+                            topInset: 16 * (1 - cornerPhase),
+                            bottomRadius: 18
+                        )
+                        .fill(.black)
+                    }
+                }
                 .opacity(Double(1 - offsetPhase))
                 .frame(width: currentWidth, height: contentHeight)
 
@@ -198,6 +237,9 @@ struct NotchPreviewContent: View {
                         highlightedCharCount: settings.listeningMode == .wordTracking ? highlightedCount : Self.loremWords.count * 5,
                         font: settings.font,
                         highlightColor: settings.fontColorPreset.color,
+                        cueColor: settings.cueColorPreset.color,
+                        cueUnreadOpacity: settings.cueBrightness.unreadOpacity,
+                        cueReadOpacity: settings.cueBrightness.readOpacity,
                         smoothScroll: settings.listeningMode != .wordTracking,
                         smoothWordProgress: previewWordProgress,
                         isListening: settings.listeningMode != .wordTracking
@@ -564,6 +606,63 @@ struct SettingsView: View {
                     }
                 }
 
+                // Cue Color
+                Text("Cue Color")
+                    .font(.system(size: 13, weight: .medium))
+
+                HStack(spacing: 8) {
+                    ForEach(FontColorPreset.allCases) { preset in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                settings.cueColorPreset = preset
+                            }
+                        } label: {
+                            VStack(spacing: 6) {
+                                Circle()
+                                    .fill(preset.color)
+                                    .frame(width: 22, height: 22)
+                                    .overlay(
+                                        Circle()
+                                            .strokeBorder(Color.primary.opacity(0.15), lineWidth: 1)
+                                    )
+                                    .overlay(
+                                        settings.cueColorPreset == preset
+                                            ? Image(systemName: "checkmark")
+                                                .font(.system(size: 10, weight: .bold))
+                                                .foregroundStyle(preset == .white ? .black : .white)
+                                            : nil
+                                    )
+                                Text(preset.label)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(settings.cueColorPreset == preset ? .primary : .secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(settings.cueColorPreset == preset ? preset.color.opacity(0.1) : Color.primary.opacity(0.05))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .strokeBorder(settings.cueColorPreset == preset ? preset.color.opacity(0.4) : Color.clear, lineWidth: 1.5)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                // Cue Brightness
+                Text("Cue Brightness")
+                    .font(.system(size: 13, weight: .medium))
+
+                Picker("", selection: $settings.cueBrightness) {
+                    ForEach(CueBrightness.allCases) { brightness in
+                        Text(brightness.label).tag(brightness)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+
                 Divider()
 
                 // Dimensions
@@ -739,6 +838,48 @@ struct SettingsView: View {
                             selectedID: $settings.pinnedScreenID,
                             onRefresh: { refreshOverlayScreens() }
                         )
+                    }
+
+                    Divider()
+
+                    Toggle(isOn: $settings.overlayTransparency) {
+                        Text("Transparency")
+                            .font(.system(size: 13, weight: .medium))
+                    }
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+
+                    Text("Makes the overlay see-through so desktop content shows through.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+
+                    if settings.overlayTransparency {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Text("Amount")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text("\(Int(settings.overlayTransparencyOpacity * 100))%")
+                                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                                    .foregroundStyle(.tertiary)
+                            }
+                            Slider(
+                                value: $settings.overlayTransparencyOpacity,
+                                in: 0.2...0.95,
+                                step: 0.05
+                            )
+                            HStack {
+                                Text("More transparent")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.tertiary)
+                                Spacer()
+                                Text("Less transparent")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(.tertiary)
+                            }
+                        }
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
 
@@ -1265,11 +1406,15 @@ struct SettingsView: View {
         settings.fontSizePreset = .lg
         settings.fontFamilyPreset = .sans
         settings.fontColorPreset = .white
+        settings.cueColorPreset = .white
+        settings.cueBrightness = .dim
         settings.overlayMode = .pinned
         settings.notchDisplayMode = .followMouse
         settings.pinnedScreenID = 0
         settings.floatingGlassEffect = false
         settings.glassOpacity = 0.15
+        settings.overlayTransparency = false
+        settings.overlayTransparencyOpacity = 0.85
         settings.followCursorWhenUndocked = false
         settings.fullscreenScreenID = 0
         settings.externalDisplayMode = .off
