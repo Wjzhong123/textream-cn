@@ -1,0 +1,78 @@
+import axios from 'axios';
+import type { AxiosInstance } from 'axios';
+
+class ApiClient {
+  private client: AxiosInstance;
+  private baseURL: string;
+
+  constructor() {
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:9123';
+    this.client = axios.create({
+      baseURL: this.baseURL,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }
+
+  // Danmaku API
+  async startDanmakuCapture() {
+    return this.client.post('/api/danmaku/start');
+  }
+
+  async stopDanmakuCapture() {
+    return this.client.post('/api/danmaku/stop');
+  }
+
+  async setCaptureRegion(region: { x: number; y: number; width: number; height: number }) {
+    return this.client.post('/api/danmaku/region', region);
+  }
+
+  async getDanmakuStatus() {
+    return this.client.get('/api/danmaku/status');
+  }
+
+  // Response API
+  async generateResponse(danmakuText: string, level: 'simple' | 'deep' | 'humorous') {
+    return this.client.post('/api/chat', {
+      message: `弹幕: ${danmakuText}\n\n请用${level === 'simple' ? '简洁' : level === 'deep' ? '深入' : '幽默'}的方式回复这条弹幕。`,
+    });
+  }
+
+  // Memory API
+  async getMemories() {
+    return this.client.get('/api/memory');
+  }
+
+  async saveMemory(content: string, tags: string[]) {
+    return this.client.post('/api/memory', { content, tags });
+  }
+
+  async deleteMemory(id: string) {
+    return this.client.delete(`/api/memory/${id}`);
+  }
+
+  // Knowledge API
+  async getKnowledgeBase() {
+    return this.client.get('/api/knowledge');
+  }
+
+  async uploadKnowledge(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.client.post('/api/knowledge/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
+
+  async deleteKnowledge(id: string) {
+    return this.client.delete(`/api/knowledge/${id}`);
+  }
+
+  // Health check
+  async healthCheck() {
+    return this.client.get('/health');
+  }
+}
+
+export const api = new ApiClient();

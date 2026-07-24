@@ -1,0 +1,81 @@
+# Xcode
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+Textream/Textream.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Archives & build artifacts
+*.xcarchive
+*.app
+*.dmg
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# SwiftPM
+.build/
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Misc
+*.swp
+*~
+*.orig
+*.log
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+web-console/dist/
+web-console/node_modules/
+
+# Data directories
+.textream/
+*.db
+*.sqlite
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# 必须忽略的目录
+agent/venv/
+web-console/node_modules/
+web-console/dist/
+.textream/

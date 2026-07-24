@@ -1,0 +1,16 @@
+---
+description: Moat — AI 编码护城河
+globs: ["**/*.py"]
+---
+# Moat 护城河
+- 改代码前跑 `moat check`，改代码后跑 `moat check`
+- 不通过不允许提交
+- 禁止使用 `git commit --no-verify` 绕过
+- `moat watch` 实时监控日志错误
+
+# moat-memory 项目记忆
+改代码前先查看:
+- `moat memory list redlines` — 项目红线
+- `moat memory list lessons` — 踩坑记录
+- `moat memory list templates` — 经验模版
+- `.moat/ai_context.md` — 自动同步的记忆快照

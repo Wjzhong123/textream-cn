@@ -1,0 +1,129 @@
+#!/bin/bash
+# textream-cli — CLI interface for Textream teleprompter
+# Usage: textream-cli "Your script text here"
+#        echo "Your script" | textream-cli
+#        textream-cli --file script.txt
+
+set -e
+
+TEXTREAM_APP="Textream.app"
+
+# Find Textream.app
+find_app() {
+    local paths=(
+        "/Applications/$TEXTREAM_APP"
+        "$HOME/Applications/$TEXTREAM_APP"
+        "$HOME/Desktop/$TEXTREAM_APP"
+    )
+    for p in "${paths[@]}"; do
+        if [ -d "$p" ]; then
+            echo "$p"
+            return 0
+        fi
+    done
+    # Spotlight search as fallback
+    if mdfind "kMDItemKind == 'Application' && kMDItemFSName == '$TEXTREAM_APP'" 2>/dev/null | head -1; then
+        return 0
+    fi
+    return 1
+}
+
+urlencode() {
+    local string="$1"
+    local strlen=${#string}
+    local encoded=""
+    local pos c o
+
+    for (( pos=0 ; pos<strlen ; pos++ )); do
+        c=${string:$pos:1}
+        case "$c" in
+            [-_.~a-zA-Z0-9] ) o="${c}" ;;
+            * )               printf -v o '%%%02x' "'$c"
+        esac
+        encoded+="${o}"
+    done
+    echo "${encoded}"
+}
+
+show_help() {
+    cat <<'EOF'
+textream-cli — CLI interface for Textream teleprompter
+
+Usage:
+  textream-cli "Your script text"    Send text to Textream
+  echo "text" | textream-cli         Pipe text from stdin
+  textream-cli --file script.txt     Read text from file
+  textream-cli --help                Show this help
+
+  textream-cli --install             Install to /usr/local/bin
+  textream-cli --uninstall           Remove from /usr/local/bin
+EOF
+}
+
+# --- Main ---
+
+if [ $# -eq 0 ]; then
+    if [ ! -t 0 ]; then
+        TEXT=$(cat)
+    else
+        show_help
+        exit 0
+    fi
+else
+    case "$1" in
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        --install)
+            SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)/textream-cli"
+            if [ ! -f "$SCRIPT_PATH" ]; then
+                echo "Error: Cannot find script at $SCRIPT_PATH"
+                exit 1
+            fi
+            cp "$SCRIPT_PATH" /usr/local/bin/textream-cli
+            chmod +x /usr/local/bin/textream-cli
+            echo "✅ Installed to /usr/local/bin/textream-cli"
+            exit 0
+            ;;
+        --uninstall)
+            rm -f /usr/local/bin/textream-cli
+            echo "✅ Removed /usr/local/bin/textream-cli"
+            exit 0
+            ;;
+        --file|-f)
+            if [ ! -f "$2" ]; then
+                echo "Error: File not found: $2"
+                exit 1
+            fi
+            TEXT=$(cat "$2")
+            shift
+            ;;
+        *)
+            TEXT="$*"
+            ;;
+    esac
+fi
+
+TEXT=$(echo "$TEXT" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+if [ -z "$TEXT" ]; then
+    echo "Error: No text provided"
+    exit 1
+fi
+
+# Launch app if not running
+if ! pgrep -x "Textream" > /dev/null 2>&1; then
+    APP_PATH=$(find_app)
+    if [ -z "$APP_PATH" ]; then
+        echo "Error: Textream.app not found. Please install it first."
+        exit 1
+    fi
+    open "$APP_PATH"
+    sleep 1
+fi
+
+# Send text via URL scheme
+ENCODED=$(urlencode "$TEXT")
+open "textream://read?text=${ENCODED}"
+
+echo "✅ Sent $(echo "$TEXT" | wc -c | tr -d ' ') characters to Textream"

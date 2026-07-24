@@ -1,0 +1,110 @@
+[
+  {
+    "id": "refactor_1784903297930",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1784903297.9302652,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1784903301668",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1784903301.668743,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1784903302090",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1784903302.090268,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1784903393335",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1784903393.3359911,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 85.71428571428572,
+      "source": "moat_check",
+      "total_checks": 14,
+      "passed": 2,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1784903399188",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1784903399.1889741,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1784903399615",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1784903399.615927,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "is_positive": true
+  }
+]
