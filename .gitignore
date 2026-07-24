@@ -79,3 +79,4 @@ agent/venv/
 web-console/node_modules/
 web-console/dist/
 .textream/
+.gstack/

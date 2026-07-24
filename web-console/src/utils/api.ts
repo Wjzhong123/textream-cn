@@ -41,20 +41,20 @@ class ApiClient {
 
   // Memory API
   async getMemories() {
-    return this.client.get('/api/memory');
+    return this.client.get('/api/memory/list');
   }
 
   async saveMemory(content: string, tags: string[]) {
-    return this.client.post('/api/memory', { content, tags });
+    return this.client.post('/api/memory/add', { content, tags });
   }
 
   async deleteMemory(id: string) {
-    return this.client.delete(`/api/memory/${id}`);
+    return this.client.delete(`/api/memory/delete/${id}`);
   }
 
   // Knowledge API
   async getKnowledgeBase() {
-    return this.client.get('/api/knowledge');
+    return this.client.get('/api/knowledge/list');
   }
 
   async uploadKnowledge(file: File) {
@@ -66,12 +66,12 @@ class ApiClient {
   }
 
   async deleteKnowledge(id: string) {
-    return this.client.delete(`/api/knowledge/${id}`);
+    return this.client.delete(`/api/knowledge/delete/${id}`);
   }
 
   // Health check
   async healthCheck() {
-    return this.client.get('/health');
+    return this.client.get('/api/health');
   }
 }
 

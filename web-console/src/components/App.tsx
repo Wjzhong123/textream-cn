@@ -12,7 +12,7 @@ export function App() {
 
   useEffect(() => {
     // Health check on mount
-    fetch('http://localhost:9123/health')
+    fetch('http://localhost:9123/api/health')
       .then((res) => res.json())
       .then((data) => {
         if (data.status === 'ok') {
@@ -26,7 +26,7 @@ export function App() {
 
     // 定期健康检查
     const interval = setInterval(() => {
-      fetch('http://localhost:9123/health')
+      fetch('http://localhost:9123/api/health')
         .then((res) => res.json())
         .then((data) => setConnected(data.status === 'ok'))
         .catch(() => setConnected(false));
