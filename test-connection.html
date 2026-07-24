@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>前后端连接测试</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      background: #f9f9f9;
+      border-left: 4px solid #ddd;
+    }
+    .test-section.success {
+      border-left-color: #28a745;
+    }
+    .test-section.error {
+      border-left-color: #dc3545;
+    }
+    .test-section.warning {
+      border-left-color: #ffc107;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+    .status.pass {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.fail {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .info {
+      color: #666;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    pre {
+      background: #272822;
+      color: #f8f8f2;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 12px;
+    }
+    .endpoints {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .endpoint {
+      padding: 8px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    .endpoint.success {
+      border-color: #28a745;
+      background: #d4edda;
+    }
+    .endpoint.error {
+      border-color: #dc3545;
+      background: #f8d7da;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔗 Textream 前后端连接测试</h1>
+
+    <div class="test-section">
+      <h3>🏥 后端服务状态</h3>
+      <div id="backend-status"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>🎨 前端服务状态</h3>
+      <div id="frontend-status"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>🧠 记忆管理 API 测试</h3>
+      <div id="memory-api"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>📚 知识库 API 测试</h3>
+      <div id="knowledge-api"></div>
+    </div>
+
+    <div class="test-section">
+      <h3>📊 连接测试总结</h3>
+      <div id="summary"></div>
+    </div>
+  </div>
+
+  <script>
+    const BACKEND_URL = 'http://localhost:9123';
+    const FRONTEND_URL = 'http://localhost:3000';
+
+    async function testBackend() {
+      const statusDiv = document.getElementById('backend-status');
+
+      try {
+        const response = await fetch(`${BACKEND_URL}/api/health`);
+        const data = await response.json();
+
+        if (response.ok && data.status === 'ok') {
+          statusDiv.innerHTML = `
+            <span class="status pass">✅ 运行中</span>
+            <div class="info">
+              版本: ${data.version}<br>
+              时间戳: ${data.timestamp}
+            </div>
+          `;
+          return true;
+        } else {
+          throw new Error('健康检查失败');
+        }
+      } catch (error) {
+        statusDiv.innerHTML = `
+          <span class="status fail">❌ 失败</span>
+          <div class="info">错误: ${error.message}</div>
+        `;
+        return false;
+      }
+    }
+
+    async function testFrontend() {
+      const statusDiv = document.getElementById('frontend-status');
+
+      try {
+        const response = await fetch(FRONTEND_URL);
+
+        if (response.ok) {
+          const html = await response.text();
+          const hasRoot = html.includes('id="root"');
+          const hasReact = html.includes('react');
+
+          statusDiv.innerHTML = `
+            <span class="status pass">✅ 运行中</span>
+            <div class="info">
+              HTTP 状态: ${response.status}<br>
+              React 根元素: ${hasRoot ? '✅' : '❌'}<br>
+              React 脚本: ${hasReact ? '✅' : '❌'}
+            </div>
+          `;
+          return true;
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (error) {
+        statusDiv.innerHTML = `
+          <span class="status fail">❌ 失败</span>
+          <div class="info">错误: ${error.message}</div>
+        `;
+        return false;
+      }
+    }
+
+    async function testMemoryAPI() {
+      const statusDiv = document.getElementById('memory-api');
+      const endpoints = [
+        { name: '列表', method: 'GET', path: '/api/memory/list' },
+        { name: '搜索', method: 'GET', path: '/api/memory/search?q=test' },
+        { name: '用户画像', method: 'GET', path: '/api/memory/persona' }
+      ];
+
+      let results = [];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(`${BACKEND_URL}${endpoint.path}`);
+          const success = response.ok;
+          results.push({ ...endpoint, success });
+        } catch (error) {
+          results.push({ ...endpoint, success: false, error: error.message });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const allSuccess = successCount === results.length;
+
+      statusDiv.innerHTML = `
+        <div class="endpoints">
+          ${results.map(r => `
+            <div class="endpoint ${r.success ? 'success' : 'error'}">
+              <strong>${r.name}</strong><br>
+              ${r.method} ${r.path}<br>
+              ${r.success ? '✅ 200' : `❌ ${r.error || '失败'}`}
+            </div>
+          `).join('')}
+        </div>
+        <div class="info" style="margin-top: 10px;">
+          通过: ${successCount}/${results.length}
+        </div>
+      `;
+
+      return allSuccess;
+    }
+
+    async function testKnowledgeAPI() {
+      const statusDiv = document.getElementById('knowledge-api');
+      const endpoints = [
+        { name: '列表', method: 'GET', path: '/api/knowledge/list' },
+        { name: '搜索', method: 'GET', path: '/api/knowledge/search?q=test' }
+      ];
+
+      let results = [];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(`${BACKEND_URL}${endpoint.path}`);
+          const success = response.ok;
+          results.push({ ...endpoint, success });
+        } catch (error) {
+          results.push({ ...endpoint, success: false, error: error.message });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const allSuccess = successCount === results.length;
+
+      statusDiv.innerHTML = `
+        <div class="endpoints">
+          ${results.map(r => `
+            <div class="endpoint ${r.success ? 'success' : 'error'}">
+              <strong>${r.name}</strong><br>
+              ${r.method} ${r.path}<br>
+              ${r.success ? '✅ 200' : `❌ ${r.error || '失败'}`}
+            </div>
+          `).join('')}
+        </div>
+        <div class="info" style="margin-top: 10px;">
+          通过: ${successCount}/${results.length}
+        </div>
+      `;
+
+      return allSuccess;
+    }
+
+    async function runTests() {
+      const backendOk = await testBackend();
+      const frontendOk = await testFrontend();
+      const memoryOk = await testMemoryAPI();
+      const knowledgeOk = await testKnowledgeAPI();
+
+      const summaryDiv = document.getElementById('summary');
+      const totalTests = 4;
+      const passedTests = [backendOk, frontendOk, memoryOk, knowledgeOk].filter(Boolean).length;
+
+      summaryDiv.innerHTML = `
+        <div style="display: flex; gap: 20px; margin-top: 10px;">
+          <div>
+            <strong>后端服务:</strong>
+            <span class="status ${backendOk ? 'pass' : 'fail'}">${backendOk ? '✅ 正常' : '❌ 异常'}</span>
+          </div>
+          <div>
+            <strong>前端服务:</strong>
+            <span class="status ${frontendOk ? 'pass' : 'fail'}">${frontendOk ? '✅ 正常' : '❌ 异常'}</span>
+          </div>
+          <div>
+            <strong>记忆 API:</strong>
+            <span class="status ${memoryOk ? 'pass' : 'fail'}">${memoryOk ? '✅ 正常' : '❌ 异常'}</span>
+          </div>
+          <div>
+            <strong>知识库 API:</strong>
+            <span class="status ${knowledgeOk ? 'pass' : 'fail'}">${knowledgeOk ? '✅ 正常' : '❌ 异常'}</span>
+          </div>
+        </div>
+        <div style="margin-top: 20px; padding: 15px; background: ${passedTests === totalTests ? '#d4edda' : '#f8d7da'}; border-radius: 4px;">
+          <strong>总体状态:</strong> ${passedTests}/${totalTests} 通过
+          ${passedTests === totalTests ? '✅ 前后端连接正常' : '⚠️ 存在连接问题'}
+        </div>
+        <div class="info" style="margin-top: 10px;">
+          <strong>前端地址:</strong> ${FRONTEND_URL}<br>
+          <strong>后端地址:</strong> ${BACKEND_URL}<br>
+          <strong>测试时间:</strong> ${new Date().toLocaleString('zh-CN')}
+        </div>
+      `;
+    }
+
+    // 页面加载后运行测试
+    window.addEventListener('load', runTests);
+  </script>
+</body>
+</html>
