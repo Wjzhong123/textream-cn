@@ -3,37 +3,92 @@ import { DanmakuPanel } from './DanmakuPanel';
 import { ResponseSidebar } from './ResponseSidebar';
 import { MemoryManager } from './MemoryManager';
 import { KnowledgeBase } from './KnowledgeBase';
+import { SettingsModal } from './SettingsModal';
 
 type View = 'danmaku' | 'memory' | 'knowledge';
+
+interface ServerConfig {
+  url: string;
+  llmProvider: string;
+  llmBaseUrl: string;
+  llmApiKey: string;
+  llmModel: string;
+  useOneMemory: boolean;
+  oneRoot: string;
+  oneApiKey: string;
+}
 
 export function App() {
   const [connected, setConnected] = useState(false);
   const [currentView, setCurrentView] = useState<View>('danmaku');
+  const [showSettings, setShowSettings] = useState(false);
+  const [config, setConfig] = useState<ServerConfig>(() => {
+    // Load from localStorage or use defaults
+    const saved = localStorage.getItem('textream_config');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // Invalid JSON, use defaults
+      }
+    }
+    return {
+      url: 'http://localhost:9123',
+      llmProvider: 'siliconflow',
+      llmBaseUrl: 'https://api.siliconflow.cn/v1',
+      llmApiKey: '',
+      llmModel: 'Qwen/Qwen2.5-72B-Instruct',
+      useOneMemory: false,
+      oneRoot: '/Users/mac/Desktop/oh-agent-panel',
+      oneApiKey: '',
+    };
+  });
 
-  useEffect(() => {
-    // Health check on mount
-    fetch('http://localhost:9123/api/health')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === 'ok') {
-          setConnected(true);
-        }
-      })
-      .catch((error) => {
-        console.error('Health check failed:', error);
-        setConnected(false);
+  // Health check function
+  const checkHealth = async () => {
+    try {
+      const response = await fetch(`${config.url}/api/health`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Add cache busting
+        cache: 'no-cache',
       });
 
-    // 定期健康检查
-    const interval = setInterval(() => {
-      fetch('http://localhost:9123/api/health')
-        .then((res) => res.json())
-        .then((data) => setConnected(data.status === 'ok'))
-        .catch(() => setConnected(false));
-    }, 5000);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'ok') {
+          setConnected(true);
+          return true;
+        }
+      }
+      setConnected(false);
+      return false;
+    } catch (error) {
+      console.error('Health check failed:', error);
+      setConnected(false);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    // Initial health check
+    checkHealth();
+
+    // Periodic health check every 5 seconds
+    const interval = setInterval(checkHealth, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [config.url]);
+
+  const handleSaveConfig = (newConfig: ServerConfig) => {
+    setConfig(newConfig);
+    localStorage.setItem('textream_config', JSON.stringify(newConfig));
+    setShowSettings(false);
+    // Re-check connection with new URL
+    checkHealth();
+  };
 
   const navItems = [
     { key: 'danmaku' as const, label: '弹幕监控', icon: '💬' },
@@ -74,8 +129,19 @@ export function App() {
           ))}
         </div>
 
-        {/* Connection Status */}
-        <div className="p-3 border-t border-gray-200 dark:border-gray-700">
+        {/* Bottom Actions */}
+        <div className="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+          {/* Settings Button */}
+          <button
+            onClick={() => setShowSettings(true)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
+            title="设置"
+          >
+            <span className="text-lg">⚙️</span>
+            <span className="hidden md:block">设置</span>
+          </button>
+
+          {/* Connection Status */}
           <div className="flex items-center gap-2 text-xs">
             <div
               className={`w-2 h-2 rounded-full ${
@@ -85,6 +151,11 @@ export function App() {
             <span className="hidden md:block text-gray-600 dark:text-gray-400">
               {connected ? '服务已连接' : '服务未连接'}
             </span>
+          </div>
+
+          {/* Server URL (shortened) */}
+          <div className="hidden md:block text-xs text-gray-500 truncate">
+            {config.url.replace('http://', '')}
           </div>
         </div>
       </nav>
@@ -105,6 +176,15 @@ export function App() {
           </aside>
         )}
       </main>
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsModal
+          config={config}
+          onSave={handleSaveConfig}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 }

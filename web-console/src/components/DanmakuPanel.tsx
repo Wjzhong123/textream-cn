@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useAppStore } from '../stores/appStore';
-import { RegionSelector } from './RegionSelector';
+import { FullscreenRegionSelector } from './FullscreenRegionSelector';
 import { ScreenshotTool } from './ScreenshotTool';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -67,8 +67,24 @@ export function DanmakuPanel() {
 
         {/* Region Selection */}
         {!isCapturing && (
-          <div className="mb-3">
-            <RegionSelector />
+          <div className="mb-3 space-y-2">
+            <FullscreenRegionSelector />
+            <button
+              onClick={async () => {
+                try {
+                  const res = await api.openRegionSelector();
+                  if (res.data.status === 'ok' && res.data.region) {
+                    useAppStore.getState().setCaptureRegion(res.data.region);
+                  }
+                } catch (err) {
+                  console.error('CaptiOCR selector failed:', err);
+                }
+              }}
+              className="w-full px-3 py-1.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800 transition"
+              title="使用 CaptiOCR 原生桌面区域选择器（全屏遮罩 + 鼠标拖拽）"
+            >
+              🖱️ CaptiOCR 视觉选择
+            </button>
           </div>
         )}
 

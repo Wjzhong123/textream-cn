@@ -1,16 +1,24 @@
 """
-弹幕截图 + OCR 识别模块
+弹幕截图 + OCR 识别模块（极简方案 - PIL.ImageGrab + pytesseract）
 
-支持 macOS Vision 和 Windows RapidOCR
+使用 Pillow ImageGrab + pytesseract 实现屏幕 OCR 弹幕捕获
+零外部依赖，PIL + pytesseract 已安装
+
+依赖：
+- Pillow（ImageGrab 屏幕截图）
+- pytesseract（OCR 识别）
+- numpy（图像预处理）
 """
 
 import asyncio
-import base64
-import io
 import logging
 import time
-from pathlib import Path
 from typing import Any
+
+import numpy as np
+import pytesseract
+import cv2
+from PIL import Image, ImageGrab, ImageGrab
 
 logger = logging.getLogger(__name__)
 
@@ -20,33 +28,30 @@ class DanmakuCapture:
     弹幕捕获器
 
     通过屏幕截图 + OCR 识别实时捕获弹幕
+    依赖: Pillow ImageGrab + pytesseract
     """
 
-    def __init__(self, platform: str | None = None):
+    def __init__(
+        self,
+        capture_interval: float = 1.0,
+        lang: str = "chi_sim+eng",
+    ):
         """
         初始化弹幕捕获器
 
         Args:
-            platform: 平台（"macos" 或 "windows"），自动检测如果为 None
+            capture_interval: 捕获间隔（秒）
+            lang: OCR 语言（默认中英文混合）
         """
-        self.platform = platform or self._detect_platform()
-        self.region: dict[str, int] | None = None
-        self.cache: list[str] = []
-        self.cache_max_size = 100
+        self.bbox: tuple[int, int, int, int] | None = None  # (left, top, right, bottom)
+        self.cache: set[str] = set()
+        self.cache_max_size = 500  # 最多缓存 500 条
         self.running = False
         self.callback: Any = None
+        self.capture_interval = capture_interval
+        self.lang = lang
 
-        logger.info(f"[DanmakuCapture] 平台: {self.platform}")
-
-    def _detect_platform(self) -> str:
-        """自动检测平台"""
-        import sys
-        if sys.platform == "darwin":
-            return "macos"
-        elif sys.platform == "win32":
-            return "windows"
-        else:
-            return "unknown"
+        logger.info(f"[DanmakuCapture] 初始化完成 (interval={capture_interval}s, lang={lang})")
 
     def set_region(self, x: int, y: int, width: int, height: int):
         """
@@ -58,8 +63,8 @@ class DanmakuCapture:
             width: 宽度
             height: 高度
         """
-        self.region = {"top": y, "left": x, "width": width, "height": height}
-        logger.info(f"[DanmakuCapture] 截图区域: {self.region}")
+        self.bbox = (x, y, x + width, y + height)
+        logger.info(f"[DanmakuCapture] 截图区域: bbox={self.bbox}")
 
     def set_callback(self, callback):
         """
@@ -72,219 +77,119 @@ class DanmakuCapture:
 
     async def start(self):
         """开始捕获弹幕"""
-        if not self.region:
+        if not self.bbox:
             raise ValueError("请先设置截图区域 (set_region)")
 
         self.running = True
         logger.info("[DanmakuCapture] 开始捕获弹幕")
 
-        while self.running:
-            try:
-                # 截图
-                screenshot = await self._capture_screenshot()
+        try:
+            while self.running:
+                try:
+                    # 截图 + OCR
+                    new_texts = await self._capture_and_ocr()
 
-                # OCR 识别
-                texts = await self._ocr_recognize(screenshot)
+                    # 去重
+                    if new_texts:
+                        # 回调
+                        if self.callback:
+                            await self.callback(new_texts)
 
-                # 去重
-                new_texts = [t for t in texts if t not in self.cache]
+                except Exception as e:
+                    logger.error(f"[DanmakuCapture] 捕获失败: {e}")
 
-                # 更新缓存
-                if new_texts:
-                    self.cache.extend(new_texts)
-                    if len(self.cache) > self.cache_max_size:
-                        self.cache = self.cache[-self.cache_max_size:]
-
-                    # 回调
-                    if self.callback:
-                        await self.callback(new_texts)
-
-            except Exception as e:
-                logger.error(f"[DanmakuCapture] 捕获失败: {e}")
-
-            # 控制捕获频率（每秒 2-3 次）
-            await asyncio.sleep(0.5)
+                # 控制捕获频率
+                await asyncio.sleep(self.capture_interval)
+        except asyncio.CancelledError:
+            logger.info("[DanmakuCapture] 捕获已取消")
+        finally:
+            self.running = False
+            logger.info("[DanmakuCapture] 停止捕获")
 
     async def stop(self):
         """停止捕获"""
         self.running = False
         logger.info("[DanmakuCapture] 停止捕获")
 
-    async def _capture_screenshot(self) -> bytes:
+    async def _capture_and_ocr(self) -> list[str]:
         """
-        截取屏幕区域
+        截图 + OCR 识别（一步完成）
 
         Returns:
-            截图字节流（PNG）
+            识别到的新文本列表
         """
-        if self.platform == "macos":
-            return await self._capture_macos()
-        elif self.platform == "windows":
-            return await self._capture_windows()
-        else:
-            raise NotImplementedError(f"不支持的平台: {self.platform}")
-
-    async def _capture_macos(self) -> bytes:
-        """macOS 屏幕截图（使用 screencapture）"""
-        import tempfile
-
-        if not self.region:
-            raise ValueError("未设置截图区域")
-
-        # 使用 screencapture 命令
-        cmd = [
-            "screencapture",
-            "-x",  # 不播放声音
-            "-R",  # 区域截图
-            f"{self.region['left']},{self.region['top']},"
-            f"{self.region['width']},{self.region['height']}",
-            "-t", "png",  # PNG 格式
-            "-",
-        ]
-
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await proc.communicate()
-
-        if proc.returncode != 0:
-            raise RuntimeError(f"screencapture 失败: {stderr.decode()}")
-
-        return stdout
-
-    async def _capture_windows(self) -> bytes:
-        """Windows 屏幕截图（使用 mss）"""
         try:
-            import mss
-            import numpy as np
+            # 1. 屏幕截图（使用 Pillow ImageGrab）
+            screenshot = ImageGrab.grab(bbox=self.bbox)
 
-            with mss.mss() as sct:
-                monitor = {
-                    "top": self.region["top"],
-                    "left": self.region["left"],
-                    "width": self.region["width"],
-                    "height": self.region["height"],
-                }
-                screenshot = sct.grab(monitor)
+            # 2. 图像预处理
+            # 转灰度 + 放大 + 二值化，提高 OCR 准确率
+            frame = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2GRAY)
 
-                # 转换为 PNG
-                import cv2
-                img = np.array(screenshot)
-                img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-                _, buffer = cv2.imencode(".png", img)
-                return buffer.tobytes()
+            # 放大 2 倍
+            frame = cv2.resize(frame, (0, 0), fx=2.0, fy=2.0)
 
-        except ImportError:
-            raise ImportError("Windows 平台需要安装 mss 和 opencv-python")
+            # 二值化，让文字更清晰
+            _, thresh = cv2.threshold(frame, 150, 255, cv2.THRESH_BINARY)
 
-    async def _ocr_recognize(self, screenshot: bytes) -> list[str]:
-        """
-        OCR 识别弹幕文本
+            # 3. OCR 识别
+            text = pytesseract.image_to_string(thresh, config="--psm 6", lang=self.lang)
 
-        Args:
-            screenshot: 截图字节流
+            # 4. 清洗与去重
+            lines = [line.strip() for line in text.split("\n") if line.strip()]
+            new_lines = []
+            for line in lines:
+                if line not in self.cache:
+                    self.cache.add(line)
+                    new_lines.append(line)
 
-        Returns:
-            识别到的文本列表
-        """
-        if self.platform == "macos":
-            return await self._ocr_macos(screenshot)
-        elif self.platform == "windows":
-            return await self._ocr_windows(screenshot)
-        else:
+                    # 控制缓存大小
+                    if len(self.cache) > self.cache_max_size:
+                        # 删除最旧的 10%
+                        old_size = int(self.cache_max_size * 0.1)
+                        cache_list = list(self.cache)
+                        self.cache = set(cache_list[-self.cache_max_size:])
+
+            logger.debug(f"[DanmakuCapture] OCR 识别到 {len(new_lines)} 条新文本")
+            return new_lines
+
+        except Exception as e:
+            logger.error(f"[DanmakuCapture] 截图+OCR 失败: {e}")
             return []
 
-    async def _ocr_macos(self, screenshot: bytes) -> list[str]:
-        """macOS OCR（使用 Vision 框架）"""
-        import tempfile
+    def get_status(self) -> dict[str, Any]:
+        """获取捕获状态"""
+        return {
+            "running": self.running,
+            "bbox": self.bbox,
+            "cache_size": len(self.cache),
+            "capture_interval": self.capture_interval,
+        }
 
-        # 保存临时文件
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
-            f.write(screenshot)
-            temp_path = f.name
 
-        try:
-            # 使用 macOS 的 Vision 框架 OCR
-            script = f"""
-            use framework "Foundation"
-            use framework "Vision"
+# 测试函数
+async def test_basic():
+    """基础测试"""
+    print("🧪 测试弹幕捕获器（PIL.ImageGrab）")
 
-            set imagePath to "{temp_path}"
-            set imageURL to current application's NSURL's fileURLWithPath:imagePath
+    capture = DanmakuCapture(capture_interval=1.0)
 
-            set imageRef to current application's CIImage's imageWithContentsOfURL:imageURL
-            set requestHandler to current application's VNImageRequestHandler's alloc()'s initWithCIImage:imageRef options:(current application's NSDictionary's dictionary())
+    # 设置区域（左上角 100,100，大小 400x300）
+    capture.set_region(100, 100, 400, 300)
 
-            set ocrRequest to current application's VNRecognizeTextRequest's alloc()'s init()
-            ocrRequest's setRecognitionLevel:(current application's VNRequestTextRecognitionLevelAccurate)
-            ocrRequest's setRecognitionLanguages:{{"zh-Hans", "en"}}
-            ocrRequest's setUsesLanguageCorrection:true
+    # 单次截图 + OCR 测试
+    print("\n📐 测试截图 + OCR...")
+    texts = await capture._capture_and_ocr()
 
-            requestHandler's performRequests:{ocrRequest}'s |error|:(missing value)
+    if texts:
+        print(f"  ✅ 识别到 {len(texts)} 条新文本:")
+        for i, text in enumerate(texts, 1):
+            print(f"  {i}. {text[:80]}")
+    else:
+        print("  ⚠️  未识别到文本（可能是空白区域）")
 
-            set results to ocrRequest's results()
-            set outputTexts to current application's NSMutableArray's array()
+    print("\n✅ 测试完成")
 
-            repeat with observation in results
-                set topCandidate to (observation's topCandidates:1)'s firstObject()
-                if topCandidate is not missing value then
-                    (outputTexts's addObject:(topCandidate's |string|() as text))
-                end if
-            end repeat
 
-            return outputTexts as list
-            """
-
-            # 执行 AppleScript
-            proc = await asyncio.create_subprocess_exec(
-                "osascript", "-e", script,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await proc.communicate()
-
-            if proc.returncode != 0:
-                logger.warning(f"Vision OCR 失败: {stderr.decode()}")
-                return []
-
-            # 解析结果
-            import json
-            try:
-                # AppleScript 返回 AppleScript 列表格式
-                output = stdout.decode().strip()
-                if output.startswith("{") and output.endswith("}"):
-                    # 转换为 JSON 数组
-                    json_str = "[" + output[1:-1].replace(", ", ", ") + "]"
-                    texts = json.loads(json_str)
-                    return [t for t in texts if t.strip()]
-
-            except Exception as e:
-                logger.warning(f"解析 OCR 结果失败: {e}")
-
-            return []
-
-        finally:
-            # 清理临时文件
-            Path(temp_path).unlink(missing_ok=True)
-
-    async def _ocr_windows(self, screenshot: bytes) -> list[str]:
-        """Windows OCR（使用 RapidOCR）"""
-        try:
-            from rapidocr_onnxruntime import RapidOCR
-
-            # 初始化 OCR（懒加载）
-            if not hasattr(self, "_ocr_engine"):
-                self._ocr_engine = RapidOCR()
-
-            # 识别
-            result, _ = self._ocr_engine(np.frombuffer(screenshot, dtype=np.uint8))
-
-            if result:
-                return [line[1] for line in result if line[1].strip()]
-            return []
-
-        except ImportError:
-            logger.error("Windows 平台需要安装 rapidocr-onnxruntime")
-            return []
+if __name__ == "__main__":
+    asyncio.run(test_basic())

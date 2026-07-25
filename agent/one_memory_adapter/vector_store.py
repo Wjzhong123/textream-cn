@@ -4,6 +4,8 @@
 基于 One Memory 的向量能力
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from .client import OneMemoryClient

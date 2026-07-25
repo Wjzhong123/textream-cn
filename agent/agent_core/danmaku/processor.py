@@ -2,11 +2,15 @@
 弹幕处理流水线
 
 集成捕获、识别、应答、推送的完整流程
+支持双引擎：
+  - DanmakuCapture（默认，PIL.ImageGrab + pytesseract）
+  - CaptiOCR（视觉框选 + ROVER/TF-IDF 去重，通过 use_captiocr=True 启用）
 """
 
 import asyncio
 import json
 import logging
+import os
 from typing import Any
 
 from .scraper import DanmakuCapture
@@ -26,6 +30,7 @@ class DanmakuProcessor:
         self,
         memory_manager = None,
         llm_provider: str | None = None,
+        use_captiocr: bool = False,
     ):
         """
         初始化弹幕处理器
@@ -33,8 +38,18 @@ class DanmakuProcessor:
         Args:
             memory_manager: One Memory 记忆管理器
             llm_provider: LLM 提供商
+            use_captiocr: 是否使用 CaptiOCR 引擎（视觉框选 + 智能去重）
         """
-        self.capture = DanmakuCapture()
+        self._use_captiocr = use_captiocr or os.environ.get("CAPTIOCR_ENABLED", "").lower() == "true"
+
+        if self._use_captiocr:
+            from captiocr_adapter import CaptiOCRBridge
+            self.capture = CaptiOCRBridge()
+            logger.info("[DanmakuProcessor] 使用 CaptiOCR 引擎")
+        else:
+            self.capture = DanmakuCapture()
+            logger.info("[DanmakuProcessor] 使用 DanmakuCapture 引擎（默认）")
+
         self.responder = DanmakuResponder(
             memory_manager=memory_manager,
             llm_provider=llm_provider,
@@ -59,7 +74,7 @@ class DanmakuProcessor:
 
     async def start(self):
         """启动弹幕处理流水线"""
-        if not self.capture.region:
+        if not self.capture.bbox:
             raise ValueError("请先设置截图区域 (set_region)")
 
         self.running = True

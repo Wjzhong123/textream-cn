@@ -1,12 +1,37 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 
+// Load server URL from localStorage
+const getServerUrl = () => {
+  try {
+    const saved = localStorage.getItem('textream_config');
+    if (saved) {
+      const config = JSON.parse(saved);
+      return config.url || 'http://localhost:9123';
+    }
+  } catch {
+    // Ignore parsing errors
+  }
+  return 'http://localhost:9123';
+};
+
 class ApiClient {
   private client: AxiosInstance;
   private baseURL: string;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:9123';
+    this.baseURL = getServerUrl();
+    this.client = axios.create({
+      baseURL: this.baseURL,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  }
+
+  // Update base URL (called when config changes)
+  updateBaseURL(url: string) {
+    this.baseURL = url;
     this.client = axios.create({
       baseURL: this.baseURL,
       headers: {
@@ -30,6 +55,10 @@ class ApiClient {
 
   async getDanmakuStatus() {
     return this.client.get('/api/danmaku/status');
+  }
+
+  async openRegionSelector() {
+    return this.client.post('/api/danmaku/selector');
   }
 
   // Response API

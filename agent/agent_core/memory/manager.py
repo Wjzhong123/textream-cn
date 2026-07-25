@@ -3,6 +3,8 @@
 Phase 2 目标：替换为 One Memory 客户端
 """
 
+from __future__ import annotations
+
 import json
 import uuid
 from datetime import datetime

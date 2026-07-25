@@ -18,7 +18,7 @@ agent_dir = Path(__file__).parent.parent.parent
 if str(agent_dir) not in sys.path:
     sys.path.insert(0, str(agent_dir))
 
-from one_memory_adapter import MemoryManager
+from one_memory_adapter import MemoryManager as OneMemoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +135,7 @@ class DanmakuResponder:
     ) -> str:
         """使用 LLM 生成话术"""
         try:
-            from ..llm.router import get_llm
+            from ..llm.router import get_llm_router as get_llm
 
             llm = get_llm(self.llm_provider)
 
@@ -146,27 +146,35 @@ class DanmakuResponder:
                 ResponseStyle.HUMOR: "幽默化解（轻松氛围）",
             }
 
-            prompt = f"""你是一个专业的直播主持人和演讲者。现在有观众发了一条弹幕，请根据以下信息生成合适的回应：
+            system_prompt = f"""你是一个专业的直播主持人和演讲者。现在有观众发了一条弹幕，请根据以下信息生成合适的回应：
 
-**弹幕内容**：{danmaku_text}
+**弹幕内容**：{{danmaku}}
 
 **回应风格**：{style_desc.get(style, "简洁")}
 
 **相关记忆**（如果有）：
-{chr(10).join(f"- {m}" for m in memories) if memories else "（无相关记忆）"}
+{{memories}}
 
 **当前上下文**：
-{json.dumps(context, ensure_ascii=False) if context else "（无上下文）"}
+{{context}}
 
 **要求**：
 1. 回应自然、亲切、专业
 2. 根据风格调整长度和语气
 3. 如果有相关记忆，可以适当引用
-4. 不要重复弹幕原文，直接给出回应
+4. 不要重复弹幕原文，直接给出回应"""
 
-**回应**："""
+            user_message = f"""弹幕内容：{danmaku_text}
 
-            response = await llm.chat(prompt)
+相关记忆：
+{chr(10).join(f"- {m}" for m in memories) if memories else "（无相关记忆）"}
+
+当前上下文：
+{json.dumps(context, ensure_ascii=False) if context else "（无上下文）"}
+
+请生成回应："""
+
+            response = llm.chat_with_system(user_message, system_prompt)
             return response.strip()
 
         except Exception as e:

@@ -4,6 +4,8 @@
 封装 One Memory 的常用记忆操作
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import datetime
 from typing import Any

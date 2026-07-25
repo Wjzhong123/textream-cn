@@ -80,3 +80,21 @@ web-console/node_modules/
 web-console/dist/
 .textream/
 .gstack/
+
+# Python venv
+.venv/
+agent/.venv/
+
+# Test artifacts
+agent/test_*.png
+agent/test_region.png
+agent/test_screenshot.png
+agent/test_realtime_*.png
+
+# Build output
+web-console/dist/
+web-console/node_modules/
+
+# Backup files
+*.backup
+*.backup.*

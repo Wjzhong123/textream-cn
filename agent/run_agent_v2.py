@@ -19,6 +19,11 @@ agent_dir = Path(__file__).parent
 if str(agent_dir) not in sys.path:
     sys.path.insert(0, str(agent_dir))
 
+# 添加 CaptiOCR vendor 路径
+vendor_captiocr = str(agent_dir / "vendor" / "captiocr")
+if vendor_captiocr not in sys.path:
+    sys.path.insert(0, vendor_captiocr)
+
 import uvicorn
 
 # 直接导入（不使用相对导入）

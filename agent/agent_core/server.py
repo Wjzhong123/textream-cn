@@ -263,10 +263,12 @@ def create_app() -> FastAPI:
     async def danmaku_status():
         """获取弹幕捕获状态"""
         if not danmaku_processor:
-            return {"running": False, "region": None}
+            return {"running": False, "region": None, "engine": None}
         return {
             "running": danmaku_processor.running,
-            "region": danmaku_processor.capture.region,
+            "region": danmaku_processor.capture.bbox,
+            "engine": "captiocr" if danmaku_processor._use_captiocr else "danmakucapture",
+            "lang": getattr(danmaku_processor.capture, 'lang', 'chi_sim+eng'),
         }
 
     @app.post("/api/danmaku/start")
@@ -296,7 +298,7 @@ def create_app() -> FastAPI:
 
     @app.post("/api/danmaku/region")
     async def danmaku_region(request: dict):
-        """设置截图区域"""
+        """设置截图区域（支持手动坐标 或 CaptiOCR 视觉框选）"""
         if not danmaku_processor:
             raise __import__("fastapi").HTTPException(status_code=503, detail="Danmaku processor not available")
 
@@ -307,6 +309,29 @@ def create_app() -> FastAPI:
 
         danmaku_processor.set_region(x, y, width, height)
         return {"status": "ok", "region": {"x": x, "y": y, "width": width, "height": height}}
+
+    @app.post("/api/danmaku/selector")
+    async def danmaku_selector():
+        """
+        打开 CaptiOCR 视觉区域选择器。
+        在全屏遮罩上拖拽鼠标框选弹幕区，松开即确认。
+        仅在 CAPTIOCR_ENABLED=true 时可用。
+        """
+        if not danmaku_processor:
+            raise __import__("fastapi").HTTPException(status_code=503, detail="Danmaku processor not available")
+
+        if not hasattr(danmaku_processor.capture, 'show_region_selector'):
+            raise __import__("fastapi").HTTPException(status_code=400, detail="CaptiOCR 未启用。设置 CAPTIOCR_ENABLED=true 或 use_captiocr=True")
+
+        # 在新线程中打开选择器（避免阻塞事件循环）
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, danmaku_processor.capture.show_region_selector)
+
+        if result is None:
+            return {"status": "cancelled", "region": None}
+
+        x, y, w, h = result
+        return {"status": "ok", "region": {"x": x, "y": y, "width": w, "height": h}}
 
     @app.websocket("/ws/danmaku")
     async def websocket_danmaku(websocket: WebSocket):
@@ -337,5 +362,10 @@ def create_app() -> FastAPI:
             logger.info("WebSocket disconnected")
         except Exception as e:
             logger.error(f"WebSocket error: {e}")
+        finally:
+            # 断开后清除回调，避免继续往关闭的 socket 发送
+            if danmaku_processor:
+                danmaku_processor.set_websocket_callback(None)
+                logger.info("WebSocket callback cleared")
 
     return app

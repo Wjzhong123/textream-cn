@@ -4,6 +4,8 @@ One Memory MCP 客户端
 通过 MCP 协议与 One Memory 通信
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -120,7 +122,8 @@ class OneMemoryClient:
         self._initialized = False
 
         # 后台执行握手
-        asyncio.create_task(self._do_handshake())
+        # 保存 task 引用防止 GC 回收（Moat firehose 规则）
+        self._handshake_task = asyncio.create_task(self._do_handshake())
 
     def _find_mcp_script(self) -> Path:
         """查找 One Memory MCP 服务器脚本"""
