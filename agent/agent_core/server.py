@@ -64,11 +64,11 @@ async def lifespan(app: FastAPI):
     else:
         print("   ℹ️  AI-memory 未安装（third_party/AI-memory 不存在），使用本地 JSON 记忆")
 
-    # 弹幕处理器（使用 CaptiOCR 引擎 + AI-memory）
+    # 弹幕处理器（DirectorServer 自动检测 + AI-memory）
     danmaku_processor = DanmakuProcessor(
         memory_manager=ai_memory_mgr,  # None 时回退到本地记忆
         llm_provider=settings.llm_provider if settings.llm_provider != "none" else None,
-        use_captiocr=True,
+        use_captiocr=False,  # 默认 DirectorServer 引擎（自动检测 Textream.app）
     )
 
     print(f"🤖 Textream Agent Core v2.0 starting on port {settings.agent_port}")
@@ -321,7 +321,10 @@ def create_app() -> FastAPI:
             return {"status": "already_running"}
 
         try:
-            await danmaku_processor.start()
+            # 后台启动（不阻塞 HTTP 响应）
+            task = asyncio.create_task(danmaku_processor.start())
+            # 保存任务引用，防止 GC 回收
+            danmaku_processor._capture_task = task
             return {"status": "started"}
         except ValueError as e:
             raise __import__("fastapi").HTTPException(status_code=400, detail=str(e))

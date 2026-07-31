@@ -250,5 +250,41 @@
       "failed": 17
     },
     "is_positive": true
+  },
+  {
+    "id": "refactor_1785496915933",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785496915.9336598,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 92.0,
+      "source": "moat_check",
+      "total_checks": 25,
+      "passed": 2,
+      "failed": 3
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785497501662",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785497501.662337,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 92.0,
+      "source": "moat_check",
+      "total_checks": 25,
+      "passed": 2,
+      "failed": 4
+    },
+    "is_positive": true
   }
 ]
