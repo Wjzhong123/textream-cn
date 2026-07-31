@@ -84,6 +84,47 @@ async def lifespan(app: FastAPI):
     print("👋 Textream Agent Core shutting down")
 
 
+def _show_standalone_selector():
+    """
+    独立启动 CaptiOCR 区域选择器，不依赖 processor 的 capture 引擎。
+    返回 (x, y, width, height) 或 None。
+    """
+    import sys
+    import os
+    import tkinter as tk
+
+    # 确保 TESSDATA_PREFIX 正确（macOS 系统路径）
+    _system_tessdata = "/usr/local/share/tessdata"
+    if os.path.isdir(_system_tessdata):
+        os.environ.setdefault("TESSDATA_PREFIX", _system_tessdata)
+
+    # 确保 TCL_LIBRARY 正确（Homebrew 安装的 tcl-tk 9.0）
+    _tcl_path = "/usr/local/Cellar/tcl-tk/9.0.3/lib/tcl9.0"
+    if os.path.isdir(_tcl_path):
+        os.environ.setdefault("TCL_LIBRARY", _tcl_path)
+
+    # 导入 CaptiOCR 选择器
+    _backend_dir = Path(__file__).parent.parent.parent
+
+    # 添加 CaptiOCR vendor 路径
+    _vendor_captiocr = str(_backend_dir / "vendor" / "captiocr")
+    if _vendor_captiocr not in sys.path:
+        sys.path.insert(0, _vendor_captiocr)
+
+    from vendor.captiocr.captiocr.ui.selection_window import SelectionWindow
+
+    root = tk.Tk()
+    root.withdraw()
+    win = SelectionWindow(root)
+    area = win.select_area()  # 同步阻塞
+    root.destroy()
+
+    if area:
+        x1, y1, x2, y2 = area
+        return (x1, y1, x2 - x1, y2 - y1)
+    return None
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Textream Agent Core",
@@ -357,25 +398,30 @@ def create_app() -> FastAPI:
     @app.post("/api/danmaku/selector")
     async def danmaku_selector():
         """
-        打开 CaptiOCR 视觉区域选择器。
-        在全屏遮罩上拖拽鼠标框选弹幕区，松开即确认。
-        仅在 CAPTIOCR_ENABLED=true 时可用。
+        打开 CaptiOCR 视觉区域选择器（tkinter 原生透明遮罩）。
+        与当前捕获引擎无关，独立可用。
+        在全屏透明遮罩上拖拽鼠标框选弹幕区，松开即确认。
         """
         if not danmaku_processor:
             raise __import__("fastapi").HTTPException(status_code=503, detail="Danmaku processor not available")
 
-        if not hasattr(danmaku_processor.capture, 'show_region_selector'):
-            raise __import__("fastapi").HTTPException(status_code=400, detail="CaptiOCR 未启用。设置 CAPTIOCR_ENABLED=true 或 use_captiocr=True")
-
-        # 在新线程中打开选择器（避免阻塞事件循环）
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, danmaku_processor.capture.show_region_selector)
+        # 优先使用 processor 自带的 CaptiOCR bridge（如果已启用）
+        if hasattr(danmaku_processor.capture, 'show_region_selector'):
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, danmaku_processor.capture.show_region_selector)
+        else:
+            # 独立创建 CaptiOCR 选择器（与当前引擎解耦）
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, _show_standalone_selector)
 
         if result is None:
             return {"status": "cancelled", "region": None}
 
         x, y, w, h = result
+        # 将选择的区域同步到处理器
+        danmaku_processor.set_region(x, y, w, h)
         return {"status": "ok", "region": {"x": x, "y": y, "width": w, "height": h}}
+
 
     @app.websocket("/ws/danmaku")
     async def websocket_danmaku(websocket: WebSocket):

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useAppStore } from '../stores/appStore';
-import { FullscreenRegionSelector } from './FullscreenRegionSelector';
 import { ScreenshotTool } from './ScreenshotTool';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
@@ -11,6 +10,7 @@ export function DanmakuPanel() {
   const { danmaku, isCapturing, setIsCapturing, addResponse, selectedLevel, captureRegion } = useAppStore();
   const { connect, disconnect, isConnected } = useWebSocket();
   const [loading, setLoading] = useState(false);
+  const [selectorLoading, setSelectorLoading] = useState(false);
 
   const handleStartCapture = async () => {
     try {
@@ -65,12 +65,12 @@ export function DanmakuPanel() {
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <h2 className="text-xl font-bold mb-3">弹幕监控</h2>
 
-        {/* Region Selection */}
+        {/* Region Selection — CaptiOCR 原生透明选择器为主 */}
         {!isCapturing && (
           <div className="mb-3 space-y-2">
-            <FullscreenRegionSelector />
             <button
               onClick={async () => {
+                setSelectorLoading(true);
                 try {
                   const res = await api.openRegionSelector();
                   if (res.data.status === 'ok' && res.data.region) {
@@ -78,13 +78,33 @@ export function DanmakuPanel() {
                   }
                 } catch (err) {
                   console.error('CaptiOCR selector failed:', err);
+                } finally {
+                  setSelectorLoading(false);
                 }
               }}
-              className="w-full px-3 py-1.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800 transition"
-              title="使用 CaptiOCR 原生桌面区域选择器（全屏遮罩 + 鼠标拖拽）"
+              disabled={selectorLoading}
+              className="w-full px-4 py-2.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title="使用 CaptiOCR 原生桌面选择器 — 全屏透明遮罩，直接看到屏幕背后的内容"
             >
-              🖱️ CaptiOCR 视觉选择
+              {selectorLoading ? (
+                '⏳ 正在打开选择器...'
+              ) : (
+                '📐 选择截图区域'
+              )}
             </button>
+            {captureRegion && (
+              <div className="flex items-center justify-between px-2">
+                <span className="text-xs text-gray-500">
+                  X:{Math.round(captureRegion.x)} Y:{Math.round(captureRegion.y)} {Math.round(captureRegion.width)}×{Math.round(captureRegion.height)}
+                </span>
+                <button
+                  onClick={() => useAppStore.getState().setCaptureRegion(null)}
+                  className="text-xs text-red-500 hover:text-red-600"
+                >
+                  清除
+                </button>
+              </div>
+            )}
           </div>
         )}
 

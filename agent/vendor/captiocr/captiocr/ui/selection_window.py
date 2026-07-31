@@ -99,7 +99,13 @@ class SelectionWindow(BaseWindow):
         if sys.platform == 'darwin':
             # Make the background color fully transparent so users can see through
             self.window.attributes('-alpha', 1.0)  # Fully opaque at window level
-            self.window.attributes('-transparentcolor', SELECTION_WINDOW_COLOR)
+            # Tcl/Tk 9.0 renamed -transparentcolor to -transparent (boolean)
+            try:
+                # Tcl/Tk 8.6 方式
+                self.window.attributes('-transparentcolor', SELECTION_WINDOW_COLOR)
+            except Exception:
+                # Tcl/Tk 9.0 方式：-transparent 是布尔值，背景色本身变为透明色
+                self.window.attributes('-transparent', True)
             # The background (black) is made transparent by -transparentcolor,
             # so the canvas appears transparent and users see the desktop behind.
             # Only the selection rectangle (red/white) and instruction labels
