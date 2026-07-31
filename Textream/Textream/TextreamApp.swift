@@ -44,6 +44,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Start director server if enabled
         TextreamService.shared.updateDirectorServer()
 
+        // Always start the screenshot API (independent of director mode)
+        TextreamService.shared.directorServer.startScreenshotAPIOnly()
+
         // Set window delegate to intercept close, disable tabs and fullscreen
         DispatchQueue.main.async {
             for window in NSApp.windows where !(window is NSPanel) {

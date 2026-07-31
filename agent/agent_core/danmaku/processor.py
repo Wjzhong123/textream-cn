@@ -2,9 +2,10 @@
 弹幕处理流水线
 
 集成捕获、识别、应答、推送的完整流程
-支持双引擎：
-  - DanmakuCapture（默认，PIL.ImageGrab + pytesseract）
-  - CaptiOCR（视觉框选 + ROVER/TF-IDF 去重，通过 use_captiocr=True 启用）
+支持引擎：
+  - DirectorDanmakuCapture（主力）→ 截屏权限归 Textream.app
+  - CaptiOCR（视觉框选 + ROVER/TF-IDF 去重）
+  - DanmakuCapture（fallback）→ PIL.ImageGrab
 """
 
 import asyncio
@@ -13,7 +14,7 @@ import logging
 import os
 from typing import Any
 
-from .scraper import DanmakuCapture
+from .scraper import DanmakuCapture, DirectorDanmakuCapture, create_capture
 from .responder import DanmakuResponder, ResponseStyle
 
 logger = logging.getLogger(__name__)
@@ -45,10 +46,13 @@ class DanmakuProcessor:
         if self._use_captiocr:
             from captiocr_adapter import CaptiOCRBridge
             self.capture = CaptiOCRBridge()
+            self._capture_engine = "captiocr"
             logger.info("[DanmakuProcessor] 使用 CaptiOCR 引擎")
         else:
+            # 占位：启动时自动检测 DirectorServer，见 launch()
+            self._capture_engine = "auto"
             self.capture = DanmakuCapture()
-            logger.info("[DanmakuProcessor] 使用 DanmakuCapture 引擎（默认）")
+            logger.info("[DanmakuProcessor] 初始化完成（启动时自动检测 DirectorServer）")
 
         self.responder = DanmakuResponder(
             memory_manager=memory_manager,
@@ -56,8 +60,37 @@ class DanmakuProcessor:
         )
         self.running = False
         self.websocket_callback: Any = None
+        self._launched = False
 
         logger.info("[DanmakuProcessor] 初始化完成")
+
+    async def launch(self):
+        """
+        自动检测 DirectorServer 并切换引擎（如果可用）
+
+        在第一次 start() 前自动调用，也可手动调用。
+        """
+        if self._launched or self._use_captiocr:
+            return
+
+        self._launched = True
+        # 尝试 DirectorServer
+        director = DirectorDanmakuCapture(
+            capture_interval=self.capture.capture_interval
+            if hasattr(self.capture, 'capture_interval') else 1.0,
+            lang=self.capture.lang if hasattr(self.capture, 'lang') else "chi_sim+eng",
+        )
+        available = await director._check_director_available()
+        if available:
+            # 保留旧 capture 的 region 设置
+            if self.capture.bbox:
+                x, y, right, bottom = self.capture.bbox
+                director.set_region(x, y, right - x, bottom - y)
+            self.capture = director
+            self._capture_engine = "director_server"
+            logger.info("[DanmakuProcessor] ✅ 已切换到 DirectorServer 引擎（截屏权限归 Textream.app）")
+        else:
+            logger.info("[DanmakuProcessor] DirectorServer 不可用，使用 PIL.ImageGrab（将弹出 Python 权限请求）")
 
     def set_region(self, x: int, y: int, width: int, height: int):
         """设置截图区域"""
@@ -74,6 +107,9 @@ class DanmakuProcessor:
 
     async def start(self):
         """启动弹幕处理流水线"""
+        # 自动检测 DirectorServer 并切换引擎
+        await self.launch()
+
         if not self.capture.bbox:
             raise ValueError("请先设置截图区域 (set_region)")
 

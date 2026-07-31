@@ -232,5 +232,23 @@
       "failed": 2
     },
     "is_positive": true
+  },
+  {
+    "id": "refactor_1785494108695",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785494108.695023,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 95.1219512195122,
+      "source": "moat_check",
+      "total_checks": 41,
+      "passed": 2,
+      "failed": 17
+    },
+    "is_positive": true
   }
 ]

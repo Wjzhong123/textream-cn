@@ -7,6 +7,8 @@
 
 import Foundation
 import Network
+import AppKit
+import OSLog
 
 // MARK: - Director State (App → Web)
 
@@ -40,6 +42,8 @@ class DirectorServer {
     private var authenticatedConnections: Set<ObjectIdentifier> = []
     private var broadcastTimer: Timer?
 
+    private static let logger = Logger(subsystem: "com.textream.director", category: "Screenshot")
+
     // Connection limit to prevent resource exhaustion (CWE-400)
     private let maxConnections = 5
 
@@ -72,6 +76,24 @@ class DirectorServer {
         authToken = Self.generateToken()
         startHTTPListener()
         startWSListener()
+    }
+
+    func startScreenshotAPIOnly() {
+        // 仅启动 HTTP 截图 API（不启动 WebSocket 广播）
+        // 用于用户未启用 DirectorServer 但需要截图功能的场景
+        guard httpListener == nil else { return }
+        guard let port = NWEndpoint.Port(rawValue: httpPort) else { return }
+        do {
+            httpListener = try NWListener(using: .tcp, on: port)
+        } catch { return }
+        httpListener?.stateUpdateHandler = { [weak self] state in
+            if case .failed = state { self?.httpListener = nil }
+        }
+        httpListener?.newConnectionHandler = { [weak self] conn in
+            self?.handleHTTPConnection(conn)
+        }
+        httpListener?.start(queue: .main)
+        Self.logger.info("Screenshot API started on port \(self.httpPort)")
     }
 
     func stop() {
@@ -132,20 +154,159 @@ class DirectorServer {
         conn.start(queue: .main)
         conn.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, _, error in
             guard let self else { conn.cancel(); return }
-            guard error == nil else { conn.cancel(); return }
+            guard let data, error == nil else { conn.cancel(); return }
 
-            let response = self.buildHTTPResponse()
+            let requestStr = String(decoding: data, as: UTF8.self)
+            let (path, params) = Self.parseHTTPRequest(requestStr)
+            let response: Data
+
+            switch path {
+            case "/api/screenshot":
+                response = self.handleScreenshotRequest(params: params)
+            case "/api/capture-status":
+                response = self.handleCaptureStatus()
+            default:
+                response = self.buildHTMLResponse()
+            }
+
             conn.send(content: response, completion: .contentProcessed { _ in
                 conn.cancel()
             })
         }
     }
 
-    private func buildHTTPResponse() -> Data {
+    /// Parse HTTP request line to extract path and query parameters.
+    /// Example: "GET /api/screenshot?x=0&y=0&w=200&h=50 HTTP/1.1" → ("/api/screenshot", ["x":"0", ...])
+    private static func parseHTTPRequest(_ request: String) -> (path: String, params: [String: String]) {
+        let lines = request.components(separatedBy: "\r\n")
+        guard let firstLine = lines.first else { return ("/", [:]) }
+        let parts = firstLine.components(separatedBy: " ")
+        guard parts.count >= 2 else { return ("/", [:]) }
+
+        let uri = parts[1]
+        let uriParts = uri.components(separatedBy: "?")
+        let path = uriParts[0]
+
+        var params: [String: String] = [:]
+        if uriParts.count >= 2 {
+            let query = uriParts[1]
+            for pair in query.components(separatedBy: "&") {
+                let kv = pair.components(separatedBy: "=")
+                if kv.count == 2 {
+                    let key = kv[0].removingPercentEncoding ?? kv[0]
+                    let value = kv[1].removingPercentEncoding ?? kv[1]
+                    params[key] = value
+                }
+            }
+        }
+        return (path, params)
+    }
+
+    /// Build a JSON HTTP response with CORS headers.
+    private static func jsonResponse(statusCode: Int = 200, body: [String: Any]) -> Data {
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: body, options: []) else {
+            return Self.errorResponse(statusCode: 500, message: "JSON serialization failed")
+        }
+        let header = "HTTP/1.1 \(statusCode) \(statusCode == 200 ? "OK" : "Error")\r\n" +
+            "Content-Type: application/json; charset=utf-8\r\n" +
+            "Content-Length: \(jsonData.count)\r\n" +
+            "Access-Control-Allow-Origin: *\r\n" +
+            "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n" +
+            "Cache-Control: no-store\r\n" +
+            "Connection: close\r\n\r\n"
+        return Data(header.utf8) + jsonData
+    }
+
+    /// Build a plain error HTTP response.
+    private static func errorResponse(statusCode: Int, message: String) -> Data {
+        let body = Data(message.utf8)
+        let header = "HTTP/1.1 \(statusCode) \(statusCode == 200 ? "OK" : "Error")\r\n" +
+            "Content-Type: text/plain; charset=utf-8\r\n" +
+            "Content-Length: \(body.count)\r\n" +
+            "Access-Control-Allow-Origin: *\r\n" +
+            "Cache-Control: no-store\r\n" +
+            "Connection: close\r\n\r\n"
+        return Data(header.utf8) + body
+    }
+
+    private func buildHTMLResponse() -> Data {
         let html = Self.generateHTML(wsPort: wsPort, authToken: authToken)
         let body = Data(html.utf8)
         let header = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(body.count)\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n"
         return Data(header.utf8) + body
+    }
+
+    // MARK: - Screenshot API
+
+    /// Handle /api/screenshot: capture a region of the screen and return JPEG base64.
+    /// Query params: x, y, w, h (integers, pixels). Defaults to full screen if omitted.
+    private func handleScreenshotRequest(params: [String: String]) -> Data {
+        let x = Int(params["x"] ?? "") ?? 0
+        let y = Int(params["y"] ?? "") ?? 0
+        let w = Int(params["w"] ?? "") ?? Int(NSScreen.main?.frame.width ?? 1440)
+        let h = Int(params["h"] ?? "") ?? Int(NSScreen.main?.frame.height ?? 900)
+
+        guard w > 0, h > 0 else {
+            return Self.jsonResponse(statusCode: 400, body: ["error": "Invalid region dimensions"])
+        }
+
+        // Use /usr/sbin/screencapture (built-in macOS tool, not deprecated)
+        // This avoids ScreenCaptureKit API unavailability in macOS 15+ SDK
+        guard let jpegData = Self.captureScreenRegion(x: x, y: y, width: w, height: h) else {
+            return Self.jsonResponse(statusCode: 500, body: [
+                "error": "Failed to capture screen region",
+                "hint": "The screencapture tool may need Screen Recording permission."
+            ])
+        }
+
+        let base64 = jpegData.base64EncodedString()
+
+        return Self.jsonResponse(body: [
+            "status": "ok",
+            "width": w,
+            "height": h,
+            "x": x,
+            "y": y,
+            "format": "jpeg",
+            "data": base64,
+            "size_bytes": jpegData.count,
+        ])
+    }
+
+    /// Capture a screen region using /usr/sbin/screencapture (Process-based).
+    /// Returns JPEG data, or nil on failure.
+    private static func captureScreenRegion(x: Int, y: Int, width: Int, height: Int) -> Data? {
+        let tempPath = "/tmp/textream_shot_\(UUID().uuidString).jpg"
+        defer { try? FileManager.default.removeItem(atPath: tempPath) }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
+        process.arguments = ["-x", "-t", "jpg", "-R", "\(x),\(y),\(width),\(height)", tempPath]
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+            guard process.terminationStatus == 0 else {
+                Self.logger.error("screencapture exited with code \(process.terminationStatus)")
+                return nil
+            }
+            return try? Data(contentsOf: URL(fileURLWithPath: tempPath))
+        } catch {
+            Self.logger.error("screencapture failed: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Handle /api/capture-status: return whether screen capture is available.
+    private func handleCaptureStatus() -> Data {
+        let canCapture = Self.captureScreenRegion(x: 0, y: 0, width: 1, height: 1) != nil
+        return Self.jsonResponse(body: [
+            "status": "ok",
+            "can_capture": canCapture,
+            "hint": canCapture
+                ? "Screen capture is available"
+                : "The screencapture tool may need Screen Recording permission.",
+        ])
     }
 
     // MARK: - WebSocket Server

@@ -308,7 +308,7 @@ def create_app() -> FastAPI:
         return {
             "running": danmaku_processor.running,
             "region": danmaku_processor.capture.bbox,
-            "engine": "captiocr" if danmaku_processor._use_captiocr else "danmakucapture",
+            "engine": getattr(danmaku_processor, '_capture_engine', 'unknown'),
             "lang": getattr(danmaku_processor.capture, 'lang', 'chi_sim+eng'),
         }
 
