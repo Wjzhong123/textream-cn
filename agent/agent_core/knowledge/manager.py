@@ -1,27 +1,17 @@
 """
-知识库管理器 - Phase 2 实现（RAG + 向量检索）
+知识库管理器（RAG 增强）
 
-基于 One Memory 的向量能力实现语义检索
+支持 AI-memory 语义检索 / 本地文件全文搜索双模式
 """
 
 from __future__ import annotations
 
 import hashlib
 import logging
-import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
-
-# 添加 agent 目录到 Python 路径
-agent_dir = Path(__file__).parent.parent.parent
-if str(agent_dir) not in sys.path:
-    sys.path.insert(0, str(agent_dir))
+from typing import Any
 
 from ..config import get_settings
-from one_memory_adapter import MemoryManager
-
-if TYPE_CHECKING:
-    pass
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -31,21 +21,22 @@ class KnowledgeManager:
     """
     知识库管理器（RAG 增强）
 
-    使用 One Memory 的向量检索能力实现语义搜索
+    支持 AI-memory 语义检索 / 本地文件全文搜索双模式
     """
 
-    def __init__(self, memory_manager: MemoryManager | None = None):
+    def __init__(self, memory_manager: Any | None = None):
         """
         初始化知识库管理器
 
         Args:
-            memory_manager: One Memory 记忆管理器（可选）
+            memory_manager: 记忆管理器（AIMemoryManager 或 None）。
+                           需要实现 async query(text, limit) → list[dict]
         """
         self.memory_manager = memory_manager
         self._local_cache: dict[str, dict[str, Any]] = {}
 
-    def set_memory_manager(self, memory_manager: MemoryManager):
-        """设置 One Memory 记忆管理器"""
+    def set_memory_manager(self, memory_manager: Any):
+        """设置记忆管理器"""
         self.memory_manager = memory_manager
 
     async def list(self) -> list[dict[str, Any]]:
@@ -57,21 +48,21 @@ class KnowledgeManager:
         2. 本地文件模式：从 data/knowledge/ 读取
         """
         if self.memory_manager:
-            # One Memory 模式：查询所有知识库记忆
+            # AI-memory 模式：语义检索所有知识库条目
             try:
                 memories = await self.memory_manager.query("知识库", limit=100)
                 return [
                     {
-                        "id": m.id,
-                        "name": m.title,
-                        "summary": m.summary,
-                        "tags": m.tags,
-                        "importance": m.importance,
+                        "id": m.get("id", "") if isinstance(m, dict) else getattr(m, "id", ""),
+                        "name": m.get("title", "") if isinstance(m, dict) else getattr(m, "title", ""),
+                        "summary": m.get("summary", "") if isinstance(m, dict) else getattr(m, "summary", ""),
+                        "tags": m.get("tags", []) if isinstance(m, dict) else getattr(m, "tags", []),
+                        "importance": m.get("importance", 3) if isinstance(m, dict) else getattr(m, "importance", 3),
                     }
                     for m in memories
                 ]
             except Exception as e:
-                logger.warning(f"[KnowledgeManager] One Memory 查询失败: {e}")
+                logger.warning(f"[KnowledgeManager] 记忆系统查询失败: {e}")
 
         # 本地文件模式（降级）
         return self._list_local_files()
@@ -117,26 +108,25 @@ class KnowledgeManager:
             搜索结果列表
         """
         if self.memory_manager:
-            # One Memory 模式：语义检索
+            # AI-memory 模式：语义检索
             try:
                 memories = await self.memory_manager.query(
-                    query=query,
+                    query_text=query,
                     limit=limit,
-                    min_importance=min_importance,
                 )
                 return [
                     {
-                        "id": m.id,
-                        "name": m.title,
-                        "summary": m.summary,
-                        "content": m.metadata.get("body", ""),
-                        "score": 0.0,  # One Memory 暂未返回分数
-                        "tags": m.tags,
+                        "id": m.get("id", "") if isinstance(m, dict) else getattr(m, "id", ""),
+                        "name": m.get("title", "") if isinstance(m, dict) else getattr(m, "title", ""),
+                        "summary": m.get("summary", "") if isinstance(m, dict) else getattr(m, "summary", ""),
+                        "content": m.get("body", "") if isinstance(m, dict) else getattr(m, "metadata", {}).get("body", ""),
+                        "score": m.get("score", 0.0) if isinstance(m, dict) else 0.0,
+                        "tags": m.get("tags", []) if isinstance(m, dict) else getattr(m, "tags", []),
                     }
                     for m in memories
                 ]
             except Exception as e:
-                logger.warning(f"[KnowledgeManager] One Memory 搜索失败: {e}")
+                logger.warning(f"[KnowledgeManager] 记忆系统搜索失败: {e}")
 
         # 本地文件模式（降级）：全文搜索
         return self._search_local(query, limit)
@@ -187,23 +177,21 @@ class KnowledgeManager:
             添加结果
         """
         if self.memory_manager and auto_vectorize:
-            # One Memory 模式：写入记忆（自动向量化）
+            # AI-memory 模式：写入记忆（自动向量化）
             try:
-                memory_id = await self.memory_manager.write(
+                result = await self.memory_manager.add(
                     title=f"知识库：{name}",
-                    summary=content[:200] + ("..." if len(content) > 200 else ""),
-                    body=content,
+                    content=content,
                     tags=tags or ["knowledge_base"],
                     importance=importance,
-                    node_type="memory_entry",
                 )
                 return {
-                    "id": memory_id,
+                    "id": result.get("id", ""),
                     "name": name,
-                    "source": "one_memory",
+                    "source": "ai_memory",
                 }
             except Exception as e:
-                logger.warning(f"[KnowledgeManager] One Memory 写入失败: {e}")
+                logger.warning(f"[KnowledgeManager] 记忆系统写入失败: {e}")
 
         # 本地文件模式（降级）
         return self._add_local_file(name, content)
@@ -225,14 +213,15 @@ class KnowledgeManager:
     async def delete_file(self, name: str) -> bool:
         """删除知识库文件"""
         if self.memory_manager:
-            # One Memory 模式：查询并删除
+            # AI-memory 模式：查询并删除
             try:
                 memories = await self.memory_manager.query(f"知识库：{name}", limit=1)
                 if memories:
-                    await self.memory_manager.delete(memories[0].id)
+                    mem_id = memories[0].get("id", "") if isinstance(memories[0], dict) else getattr(memories[0], "id", "")
+                    await self.memory_manager.delete(mem_id)
                     return True
             except Exception as e:
-                logger.warning(f"[KnowledgeManager] One Memory 删除失败: {e}")
+                logger.warning(f"[KnowledgeManager] 记忆系统删除失败: {e}")
 
         # 本地文件模式（降级）
         KNOWLEDGE_DIR = settings.data_dir / "knowledge"

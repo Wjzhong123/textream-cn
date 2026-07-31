@@ -1,6 +1,7 @@
 """
 Selection window for choosing capture area.
 """
+import sys
 import tkinter as tk
 from typing import Optional, Callable, Tuple
 
@@ -24,6 +25,10 @@ class SelectionWindow(BaseWindow):
         self.start_y: Optional[int] = None
         self.rect_id: Optional[int] = None
         self.selection_area: Optional[Tuple[int, int, int, int]] = None
+        
+        # Blocking select_area result
+        self._result: Optional[Tuple[int, int, int, int]] = None
+        self._result_var = tk.BooleanVar(value=False)
         
         # Callbacks
         self.on_selection_complete: Optional[Callable[[Tuple[int, int, int, int]], None]] = None
@@ -53,6 +58,26 @@ class SelectionWindow(BaseWindow):
         else:
             self.logger.info("Fallback DPI scale factor: 1.0")
     
+    def select_area(self) -> Optional[Tuple[int, int, int, int]]:
+        """
+        Blocking method that shows the selection window and waits for user input.
+        Returns (x1, y1, x2, y2) in screen coordinates, or None if cancelled.
+        """
+        self._result = None
+        self.on_selection_complete = lambda area, _: self._on_selection_done(area)
+        self.on_selection_cancelled = lambda: self._on_selection_done(None)
+        self.show()
+        self.window.wait_variable(self._result_var)
+        return self._result
+
+    def _on_selection_done(self, area):
+        """Internal callback for selection done."""
+        self._result = area
+        try:
+            self._result_var.set(1)
+        except Exception:
+            pass
+
     def show(self) -> None:
         """Show the selection window."""
         # Create fullscreen window
@@ -61,11 +86,27 @@ class SelectionWindow(BaseWindow):
         # Configure window to cover virtual desktop
         x, y, width, height = self.virtual_bounds
         
-        self.window.attributes('-fullscreen', False)  # Don't use fullscreen mode
-        self.window.attributes('-alpha', SELECTION_WINDOW_ALPHA)
-        self.window.attributes('-topmost', True)
+        # macOS: order matters — set overrideredirect FIRST, then alpha/transparency
         self.window.overrideredirect(True)
+        self.window.attributes('-fullscreen', False)
+        self.window.attributes('-topmost', True)
         self.window.configure(bg=SELECTION_WINDOW_COLOR)
+        
+        # macOS transparency: use -transparentcolor to make the background color
+        # fully transparent, so only the selection rectangle and crosshair cursor
+        # are visible. -alpha is NOT used with overrideredirect on macOS
+        # because it makes the window dim and prevents seeing through it.
+        if sys.platform == 'darwin':
+            # Make the background color fully transparent so users can see through
+            self.window.attributes('-alpha', 1.0)  # Fully opaque at window level
+            self.window.attributes('-transparentcolor', SELECTION_WINDOW_COLOR)
+            # The background (black) is made transparent by -transparentcolor,
+            # so the canvas appears transparent and users see the desktop behind.
+            # Only the selection rectangle (red/white) and instruction labels
+            # (yellow/red bg) are visible.
+        else:
+            # Windows/Linux: use standard alpha blending
+            self.window.attributes('-alpha', SELECTION_WINDOW_ALPHA)
         
         # Set geometry to cover virtual desktop (all monitors)
         self.window.geometry(f"{width}x{height}+{x}+{y}")

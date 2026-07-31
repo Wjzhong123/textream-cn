@@ -132,6 +132,11 @@ class OneMemoryClient:
         if one_root:
             root = Path(one_root)
             candidates = [
+                # AI-memory standalone repo 结构
+                root / "bin" / "one-memory-mcp.sh",
+                root / "packages" / "memory-mcp" / "build" / "index.js",
+                root / "packages" / "memory-mcp" / "src" / "index.ts",
+                # One OS 完整项目结构 (向后兼容)
                 root / "packages" / "backend" / "bin" / "mcp" / "one-memory-mcp.sh",
                 root / "backend" / "bin" / "mcp" / "one-memory-mcp.sh",
                 root / "packages" / "one-memory-mcp" / "build" / "index.js",
@@ -179,13 +184,18 @@ class OneMemoryClient:
         if env_dir := os.environ.get("ONE_MEMORY_CODEGRAPH_DIR"):
             return Path(env_dir)
 
-        # 2. ONE_ROOT
+        # 2. ONE_ROOT (AI-memory 或 One OS)
         if one_root := os.environ.get("ONE_ROOT"):
             candidate = Path(one_root) / ".codegraph"
             if candidate.exists():
                 return candidate
 
-        # 3. 默认位置（macOS）
+        # 3. AI-memory repo 默认 codegraph 目录
+        ai_memory_codegraph = Path.home() / "Desktop" / "AI-memory" / ".codegraph"
+        if ai_memory_codegraph.exists():
+            return ai_memory_codegraph
+
+        # 4. 默认位置（macOS - One OS Electron）
         default = Path.home() / "Library" / "Application Support" / "@one" / "electron" / ".codegraph"
         if default.exists():
             return default

@@ -82,12 +82,28 @@ export function App() {
     return () => clearInterval(interval);
   }, [config.url]);
 
-  const handleSaveConfig = (newConfig: ServerConfig) => {
+  const handleSaveConfig = async (newConfig: ServerConfig) => {
     setConfig(newConfig);
     localStorage.setItem('textream_config', JSON.stringify(newConfig));
     setShowSettings(false);
     // Re-check connection with new URL
-    checkHealth();
+    await checkHealth();
+
+    // 同步 LLM 配置到后端 API（运行时生效，自动持久化）
+    try {
+      await fetch(`${config.url}/api/models/settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: newConfig.llmProvider,
+          base_url: newConfig.llmBaseUrl,
+          api_key: newConfig.llmApiKey,
+          model: newConfig.llmModel,
+        }),
+      });
+    } catch (e) {
+      console.warn('LLM config sync failed (backend may not support it yet):', e);
+    }
   };
 
   const navItems = [

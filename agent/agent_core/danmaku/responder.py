@@ -2,6 +2,9 @@
 弹幕实时应答生成器
 
 根据弹幕内容生成救场话术（3 档：简单应答 / 深度解析 / 幽默化解）
+记忆系统：
+  - 主推：AIMemoryManager（AI-memory MCP 子进程，语义搜索）
+  - 回退：无记忆
 """
 
 from __future__ import annotations
@@ -9,16 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import sys
-from pathlib import Path
 from typing import Any
-
-# 添加 agent 目录到 Python 路径
-agent_dir = Path(__file__).parent.parent.parent
-if str(agent_dir) not in sys.path:
-    sys.path.insert(0, str(agent_dir))
-
-from one_memory_adapter import MemoryManager as OneMemoryManager
 
 logger = logging.getLogger(__name__)
 
@@ -63,21 +57,22 @@ class DanmakuResponder:
 
     def __init__(
         self,
-        memory_manager: MemoryManager | None = None,
+        memory_manager: Any | None = None,
         llm_provider: str | None = None,
     ):
         """
         初始化应答生成器
 
         Args:
-            memory_manager: One Memory 记忆管理器（用于检索相关记忆）
+            memory_manager: 记忆管理器（AIMemoryManager 或 None）。
+                           需要实现 async query(text, limit) → list[dict]
             llm_provider: LLM 提供商（"siliconflow"、"openai"、"deepseek" 等）
         """
         self.memory_manager = memory_manager
         self.llm_provider = llm_provider
         logger.info("[DanmakuResponder] 初始化完成")
 
-    def set_memory_manager(self, memory_manager: MemoryManager):
+    def set_memory_manager(self, memory_manager: Any):
         """设置记忆管理器"""
         self.memory_manager = memory_manager
 
@@ -105,7 +100,11 @@ class DanmakuResponder:
         if self.memory_manager:
             try:
                 results = await self.memory_manager.query(danmaku_text, limit=3)
-                memories = [m.summary for m in results]
+                # 支持 dict 和 object 两种返回格式
+                memories = [
+                    m.get("summary", "") if isinstance(m, dict) else getattr(m, "summary", "")
+                    for m in results
+                ]
             except Exception as e:
                 logger.warning(f"[DanmakuResponder] 记忆检索失败: {e}")
 

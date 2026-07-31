@@ -98,3 +98,6 @@ web-console/node_modules/
 # Backup files
 *.backup
 *.backup.*
+
+# Vendored dependencies (each has its own git)
+third_party/

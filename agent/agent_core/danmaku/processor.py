@@ -36,7 +36,7 @@ class DanmakuProcessor:
         初始化弹幕处理器
 
         Args:
-            memory_manager: One Memory 记忆管理器
+            memory_manager: 记忆管理器（AIMemoryManager 或 None）
             llm_provider: LLM 提供商
             use_captiocr: 是否使用 CaptiOCR 引擎（视觉框选 + 智能去重）
         """

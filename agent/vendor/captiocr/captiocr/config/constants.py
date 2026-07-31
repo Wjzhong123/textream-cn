@@ -53,7 +53,7 @@ POST_PROCESS_MIN_NEW_WORDS = 3
 CAPTURE_WINDOW_ALPHA = 0.1  # Semi-transparent - control frame visible, capture area distinguishable
 CAPTURE_WINDOW_COLOR = 'white'  # Using white for transparent effect
 CONTROL_FRAME_HEIGHT = 30  # pixels - increased to avoid overlap with capture area
-SELECTION_WINDOW_ALPHA = 0.5
+SELECTION_WINDOW_ALPHA = 0.15  # Very transparent for Windows/Linux; macOS uses -transparentcolor
 SELECTION_WINDOW_COLOR = 'black'
 
 # Supported Languages
