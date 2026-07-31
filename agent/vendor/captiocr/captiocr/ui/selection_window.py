@@ -92,24 +92,21 @@ class SelectionWindow(BaseWindow):
         self.window.attributes('-topmost', True)
         self.window.configure(bg=SELECTION_WINDOW_COLOR)
         
-        # macOS transparency: use -transparentcolor to make the background color
-        # fully transparent, so only the selection rectangle and crosshair cursor
-        # are visible. -alpha is NOT used with overrideredirect on macOS
-        # because it makes the window dim and prevents seeing through it.
+        # macOS transparency strategy:
+        #   Tcl/Tk 8.6:  -transparentcolor 'black' → 只让黑色背景透明，画布内容可见
+        #   Tcl/Tk 9.0+: -transparentcolor 已移除，-transparent True 让整个窗口完全透明
+        #                 所以改用 -alpha 低值实现半透明效果（兼容所有版本）
         if sys.platform == 'darwin':
-            # Make the background color fully transparent so users can see through
-            self.window.attributes('-alpha', 1.0)  # Fully opaque at window level
-            # Tcl/Tk 9.0 renamed -transparentcolor to -transparent (boolean)
-            try:
-                # Tcl/Tk 8.6 方式
+            # 检测 Tcl/Tk 版本
+            _tk_ver = int(self.window.tk.call('info', 'patchlevel').split('.')[0])
+            if _tk_ver < 9:
+                # Tcl/Tk 8.6: -transparentcolor 只让指定颜色透明
+                self.window.attributes('-alpha', 1.0)
                 self.window.attributes('-transparentcolor', SELECTION_WINDOW_COLOR)
-            except Exception:
-                # Tcl/Tk 9.0 方式：-transparent 是布尔值，背景色本身变为透明色
-                self.window.attributes('-transparent', True)
-            # The background (black) is made transparent by -transparentcolor,
-            # so the canvas appears transparent and users see the desktop behind.
-            # Only the selection rectangle (red/white) and instruction labels
-            # (yellow/red bg) are visible.
+            else:
+                # Tcl/Tk 9.0+: -transparentcolor 已移除，改用 -alpha 半透明
+                # 设置半透明让用户看到桌面，同时画布内容（选框、光标）可见
+                self.window.attributes('-alpha', SELECTION_WINDOW_ALPHA)
         else:
             # Windows/Linux: use standard alpha blending
             self.window.attributes('-alpha', SELECTION_WINDOW_ALPHA)
@@ -161,9 +158,9 @@ class SelectionWindow(BaseWindow):
     
     def _add_instructions(self) -> None:
         """Add instruction text to the window."""
-        instructions = """Click and drag to select capture area.
-Press ESC to cancel.
-Press Enter to confirm selection."""
+        instructions = """拖拽鼠标框选识别区域
+松开即自动确认
+按 ESC 取消"""
         
         if self.monitor_manager:
             # Add instructions for each monitor
@@ -297,6 +294,10 @@ Press Enter to confirm selection."""
             else:
                 self.logger.debug(f"Selection ended at: ({end_x}, {end_y})")
                 self.logger.debug(f"Selection area: {self.selection_area}")
+
+            # 松开鼠标自动确认选择（Textream 模式：不需要按 Enter）
+            # 最小面积校验在 _on_confirm 中处理，不满足时显示提示并返回
+            self._on_confirm()
     
     def _on_confirm(self, event=None) -> None:
         """Handle selection confirmation."""

@@ -48,7 +48,6 @@ async def lifespan(app: FastAPI):
 
     # 初始化管理器
     memory_mgr = LocalMemoryManager()
-    knowledge_mgr = KnowledgeManager()
     llm_router = LLMRouter()
 
     # AI-memory 集成（通过 MCP 子进程调用 wang-jie-git/AI-memory）
@@ -64,12 +63,27 @@ async def lifespan(app: FastAPI):
     else:
         print("   ℹ️  AI-memory 未安装（third_party/AI-memory 不存在），使用本地 JSON 记忆")
 
-    # 弹幕处理器（DirectorServer 自动检测 + AI-memory）
+    # 知识库（AI-memory 可用时自动语义搜索，否则本地子串匹配）
+    knowledge_mgr = KnowledgeManager(memory_manager=ai_memory_mgr)
+
+    # 同步：将本地知识库摘要索引到 AI-memory（幂等操作）
+    if ai_memory_mgr:
+        await knowledge_mgr._sync_local_to_ai()
+
+    # 弹幕处理器（DirectorServer 自动检测 + AI-memory + 知识库）
     danmaku_processor = DanmakuProcessor(
         memory_manager=ai_memory_mgr,  # None 时回退到本地记忆
+        knowledge_manager=knowledge_mgr,
         llm_provider=settings.llm_provider if settings.llm_provider != "none" else None,
         use_captiocr=False,  # 默认 DirectorServer 引擎（自动检测 Textream.app）
     )
+
+    # 启动时自动拉起 Textream.app 的 DirectorServer（确保截图权限归 Textream.app）
+    # 这样用户点击「开始捕获」时 DirectorServer 已经就绪，不会回退到 PIL
+    try:
+        await danmaku_processor.launch()
+    except Exception as e:
+        logger.warning(f"启动时自动拉起 Textream.app 失败（非关键，用户点击捕获时会重试）: {e}")
 
     print(f"🤖 Textream Agent Core v2.0 starting on port {settings.agent_port}")
     print(f"   记忆: {'AI-memory (语义搜索)' if ai_memory_mgr else '本地 JSON 文件'}")
@@ -86,42 +100,95 @@ async def lifespan(app: FastAPI):
 
 def _show_standalone_selector():
     """
-    独立启动 CaptiOCR 区域选择器，不依赖 processor 的 capture 引擎。
+    独立启动 CaptiOCR 区域选择器（子进程方式）。
+    tkinter 必须在主线程运行，但 FastAPI 工作在线程池中，
+    因此将选择器隔离到独立子进程执行，通过 stdout 传回结果。
     返回 (x, y, width, height) 或 None。
     """
-    import sys
-    import os
-    import tkinter as tk
+    import subprocess
+    import json
 
-    # 确保 TESSDATA_PREFIX 正确（macOS 系统路径）
-    _system_tessdata = "/usr/local/share/tessdata"
-    if os.path.isdir(_system_tessdata):
-        os.environ.setdefault("TESSDATA_PREFIX", _system_tessdata)
+    _agent_dir = Path(__file__).parent.parent
+    _script = str(_agent_dir / "scripts" / "run_selector.py")
 
-    # 确保 TCL_LIBRARY 正确（Homebrew 安装的 tcl-tk 9.0）
-    _tcl_path = "/usr/local/Cellar/tcl-tk/9.0.3/lib/tcl9.0"
-    if os.path.isdir(_tcl_path):
-        os.environ.setdefault("TCL_LIBRARY", _tcl_path)
+    if not Path(_script).is_file():
+        logger.error(f"选择器脚本不存在: {_script}")
+        return None
 
-    # 导入 CaptiOCR 选择器
-    _backend_dir = Path(__file__).parent.parent.parent
+    try:
+        result = subprocess.run(
+            [sys.executable, _script],
+            capture_output=True, text=True, timeout=120,
+            cwd=str(_agent_dir),
+        )
+        if result.returncode != 0:
+            logger.error(f"选择器进程异常: {result.stderr.strip()}")
+            return None
 
-    # 添加 CaptiOCR vendor 路径
-    _vendor_captiocr = str(_backend_dir / "vendor" / "captiocr")
-    if _vendor_captiocr not in sys.path:
-        sys.path.insert(0, _vendor_captiocr)
+        data = json.loads(result.stdout.strip())
+        if data is None:
+            return None
 
-    from vendor.captiocr.captiocr.ui.selection_window import SelectionWindow
+        return (data["x"], data["y"], data["width"], data["height"])
+    except subprocess.TimeoutExpired:
+        logger.warning("选择器超时（用户可能未操作）")
+        return None
+    except (json.JSONDecodeError, KeyError, OSError) as e:
+        logger.error(f"选择器结果解析失败: {e}")
+        return None
 
-    root = tk.Tk()
-    root.withdraw()
-    win = SelectionWindow(root)
-    area = win.select_area()  # 同步阻塞
-    root.destroy()
 
-    if area:
-        x1, y1, x2, y2 = area
-        return (x1, y1, x2 - x1, y2 - y1)
+def _extract_file_text(filename: str, content: bytes) -> str | None:
+    """
+    从上传文件中提取纯文本内容。
+    支持 .txt .md .json .docx .doc
+    """
+    import re
+    import subprocess
+    import tempfile
+    from pathlib import Path
+
+    ext = Path(filename).suffix.lower()
+
+    if ext in (".txt", ".md"):
+        return content.decode("utf-8", errors="replace")
+
+    if ext == ".json":
+        return content.decode("utf-8", errors="replace")
+
+    if ext == ".docx":
+        try:
+            from docx import Document
+            doc = Document(__import__("io").BytesIO(content))
+            paragraphs = []
+            for para in doc.paragraphs:
+                text = para.text.strip()
+                if text:
+                    paragraphs.append(text)
+            return "\n\n".join(paragraphs)
+        except Exception as e:
+            logger.error(f"解析 .docx 失败: {e}")
+            return None
+
+    if ext == ".doc":
+        # macOS 内置 textutil 可转换 .doc → .txt
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".doc", delete=False) as tmp:
+                tmp.write(content)
+                tmp_path = tmp.name
+            out_path = tmp_path + ".txt"
+            subprocess.run(
+                ["textutil", "-convert", "txt", "-output", out_path, tmp_path],
+                capture_output=True, timeout=30,
+            )
+            result = Path(out_path).read_text(encoding="utf-8", errors="replace")
+            Path(tmp_path).unlink(missing_ok=True)
+            Path(out_path).unlink(missing_ok=True)
+            return result
+        except Exception as e:
+            logger.error(f"解析 .doc 失败: {e}")
+            return None
+
     return None
 
 
@@ -288,6 +355,26 @@ def create_app() -> FastAPI:
             raise __import__("fastapi").HTTPException(status_code=400, detail="name and content are required")
         result = await knowledge_mgr.add_file(name, content)
         return {"status": "ok", **result}
+
+    @app.post("/api/knowledge/upload")
+    async def upload_knowledge(file: __import__("fastapi").UploadFile = __import__("fastapi").File(...)):
+        """上传知识库文档（支持 .txt .md .json .docx .doc）"""
+        if not knowledge_mgr:
+            raise __import__("fastapi").HTTPException(status_code=503, detail="Knowledge not available")
+
+        filename = file.filename or "unnamed"
+        content_bytes = await file.read()
+
+        # 提取文本内容
+        text = _extract_file_text(filename, content_bytes)
+        if text is None:
+            raise __import__("fastapi").HTTPException(
+                status_code=400,
+                detail=f"不支持的文件格式或解析失败: {filename}",
+            )
+
+        result = await knowledge_mgr.add_file(filename, text)
+        return {"status": "ok", "filename": filename, **result}
 
     @app.delete("/api/knowledge/delete/{name}")
     async def delete_knowledge(name: str):

@@ -14,7 +14,16 @@ export function KnowledgeBase() {
   const loadKnowledgeBase = async () => {
     try {
       const response = await api.getKnowledgeBase();
-      setKnowledgeDocs(response.data.items || []);
+      // 后端返回 items 包含 name, summary, content, tags 等字段
+      // 前端映射为统一的文档格式
+      const docs = (response.data.items || []).map((item: any) => ({
+        id: item.id || item.name || `${Date.now()}`,
+        filename: item.name || item.filename || '未知文档',
+        content: item.content || item.summary || '',
+        vectorCount: item.vectorCount || 0,
+        uploadedAt: item.uploadedAt || item.timestamp || new Date().toISOString(),
+      }));
+      setKnowledgeDocs(docs);
     } catch (error) {
       console.error('Failed to load knowledge base:', error);
     }
@@ -25,10 +34,10 @@ export function KnowledgeBase() {
     if (!file) return;
 
     // 验证文件类型
-    const validTypes = ['.txt', '.md', '.json'];
+    const validTypes = ['.txt', '.md', '.json', '.docx', '.doc'];
     const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
     if (!validTypes.includes(fileExt)) {
-      alert('只支持 .txt、.md、.json 文件');
+      alert('只支持 .txt、.md、.json、.docx、.doc 文件');
       return;
     }
 
@@ -76,13 +85,13 @@ export function KnowledgeBase() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".txt,.md,.json"
+            accept=".txt,.md,.json,.docx,.doc"
             onChange={handleFileUpload}
             className="hidden"
           />
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          支持 .txt、.md、.json 格式
+          支持 .txt、.md、.json、.docx、.doc 格式
         </p>
       </div>
 
@@ -118,9 +127,8 @@ export function KnowledgeBase() {
                 <summary className="cursor-pointer text-primary-600 dark:text-primary-400 hover:underline">
                   查看内容
                 </summary>
-                <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-900 rounded text-xs overflow-auto max-h-32">
-                  {doc.content?.substring(0, 500)}
-                  {(doc.content?.length || 0) > 500 && '...'}
+                <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-900 rounded text-xs overflow-auto max-h-[500px] whitespace-pre-wrap">
+                  {doc.content || '（无内容）'}
                 </div>
               </details>
             </div>

@@ -209,6 +209,9 @@ class DirectorDanmakuCapture:
         lines = [line.strip() for line in text.split("\n") if line.strip()]
         new_lines = []
         for line in lines:
+            # 过滤：必须包含至少 2 个中文字符，且不是纯符号/表情
+            if not self._is_meaningful_text(line):
+                continue
             if line not in self.cache:
                 self.cache.add(line)
                 new_lines.append(line)
@@ -218,6 +221,43 @@ class DirectorDanmakuCapture:
 
         logger.debug(f"[DirectorDanmakuCapture] OCR 识别到 {len(new_lines)} 条新文本")
         return new_lines
+
+    @staticmethod
+    def _is_meaningful_text(text: str) -> bool:
+        """
+        判断 OCR 文本是否有意义（过滤垃圾识别结果）
+
+        过滤规则：
+        - 太少字符（< 2）→ 过滤
+        - 不含中文字符 → 过滤（弹幕场景主要是中文）
+        - 中文字符 < 3 个 → 过滤（避免送礼动画"送出了 x1"等误识别）
+        - 中文占比 < 25% → 过滤
+        - 包含送礼/礼物特征（"x1"/"x2"/"BH"/"DB" 等大写字母+数字组合）→ 过滤
+        """
+        if len(text) < 2:
+            return False
+
+        # 统计中文字符（Unicode CJK 统一表意文字区块）
+        chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+        if chinese_chars < 3:
+            return False
+
+        # 中文占比
+        ratio = chinese_chars / len(text)
+        if ratio < 0.25:
+            return False
+
+        # 过滤送礼/礼物特征：文本中同时包含大写字母和数字的短片段
+        # 典型模式："送出了 BH x1"、"ADH x1"、"图 x1"
+        import re
+        # 匹配 "大写字母+数字" 组合（如 BH1, x1, x2, DB x1）
+        if re.search(r'[A-Z]{2,}\s*x?\d', text):
+            return False
+        # 匹配 "x1"、"x2" 等礼物倍数
+        if re.search(r'\bx\d\b', text):
+            return False
+
+        return True
 
     def get_status(self) -> dict[str, Any]:
         """获取捕获状态"""

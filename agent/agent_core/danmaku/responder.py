@@ -53,11 +53,13 @@ class DanmakuResponder:
     弹幕应答生成器
 
     根据弹幕意图生成对应的话术
+    支持记忆系统 + 知识库双上下文增强
     """
 
     def __init__(
         self,
         memory_manager: Any | None = None,
+        knowledge_manager: Any | None = None,
         llm_provider: str | None = None,
     ):
         """
@@ -66,15 +68,55 @@ class DanmakuResponder:
         Args:
             memory_manager: 记忆管理器（AIMemoryManager 或 None）。
                            需要实现 async query(text, limit) → list[dict]
+            knowledge_manager: 知识库管理器（KnowledgeManager 或 None）。
+                              需要实现 async search(query, limit) → list[dict]
             llm_provider: LLM 提供商（"siliconflow"、"openai"、"deepseek" 等）
         """
         self.memory_manager = memory_manager
+        self.knowledge_manager = knowledge_manager
         self.llm_provider = llm_provider
-        logger.info("[DanmakuResponder] 初始化完成")
+        logger.info("[DanmakuResponder] 初始化完成（记忆+知识库双上下文增强）")
 
     def set_memory_manager(self, memory_manager: Any):
         """设置记忆管理器"""
         self.memory_manager = memory_manager
+
+    def set_knowledge_manager(self, knowledge_manager: Any):
+        """设置知识库管理器"""
+        self.knowledge_manager = knowledge_manager
+
+    async def retrieve_context(self, query: str) -> dict[str, Any]:
+        """
+        检索上下文：同时搜索记忆和知识库
+
+        Returns:
+            {"memories": [...], "knowledge": [...]}
+        """
+        context = {"memories": [], "knowledge": []}
+
+        # 1. 检索记忆
+        if self.memory_manager:
+            try:
+                results = await self.memory_manager.query(query, limit=3)
+                context["memories"] = [
+                    m.get("summary", "") if isinstance(m, dict) else getattr(m, "summary", "")
+                    for m in results
+                ]
+            except Exception as e:
+                logger.warning(f"[DanmakuResponder] 记忆检索失败: {e}")
+
+        # 2. 检索知识库
+        if self.knowledge_manager:
+            try:
+                results = await self.knowledge_manager.search(query, limit=3)
+                context["knowledge"] = [
+                    r.get("name", "") + "：" + r.get("snippet", r.get("content", ""))[:200]
+                    for r in results
+                ]
+            except Exception as e:
+                logger.warning(f"[DanmakuResponder] 知识库检索失败: {e}")
+
+        return context
 
     async def generate_response(
         self,
@@ -95,18 +137,10 @@ class DanmakuResponder:
         """
         logger.info(f"[DanmakuResponder] 生成应答: {danmaku_text[:50]}... (style={style})")
 
-        # 1. 检索相关记忆（如果可用）
-        memories = []
-        if self.memory_manager:
-            try:
-                results = await self.memory_manager.query(danmaku_text, limit=3)
-                # 支持 dict 和 object 两种返回格式
-                memories = [
-                    m.get("summary", "") if isinstance(m, dict) else getattr(m, "summary", "")
-                    for m in results
-                ]
-            except Exception as e:
-                logger.warning(f"[DanmakuResponder] 记忆检索失败: {e}")
+        # 1. 检索上下文（记忆 + 知识库）
+        context = await self.retrieve_context(danmaku_text)
+        memories = context["memories"]
+        knowledge = context["knowledge"]
 
         # 2. 生成话术
         if self.llm_provider:
@@ -154,19 +188,25 @@ class DanmakuResponder:
 **相关记忆**（如果有）：
 {{memories}}
 
+**相关知识库**（如果有）：
+{{knowledge}}
+
 **当前上下文**：
 {{context}}
 
 **要求**：
 1. 回应自然、亲切、专业
 2. 根据风格调整长度和语气
-3. 如果有相关记忆，可以适当引用
+3. 如果有相关记忆或知识库内容，可以适当引用
 4. 不要重复弹幕原文，直接给出回应"""
 
             user_message = f"""弹幕内容：{danmaku_text}
 
 相关记忆：
 {chr(10).join(f"- {m}" for m in memories) if memories else "（无相关记忆）"}
+
+相关知识库：
+{chr(10).join(f"- {k}" for k in knowledge) if knowledge else "（无相关知识）"}
 
 当前上下文：
 {json.dumps(context, ensure_ascii=False) if context else "（无上下文）"}

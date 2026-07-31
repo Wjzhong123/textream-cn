@@ -2,8 +2,14 @@ import { useState } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useAppStore } from '../stores/appStore';
 import { ScreenshotTool } from './ScreenshotTool';
-import { formatDistanceToNow } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+
+/** 秒级时间差显示 */
+function timeAgo(ts: number): string {
+  const seconds = Math.floor((Date.now() - ts) / 1000);
+  if (seconds < 60) return `${seconds}秒前`;
+  const mins = Math.floor(seconds / 60);
+  return `${mins}分钟前`;
+}
 import { api } from '../utils/api';
 
 export function DanmakuPanel() {
@@ -161,26 +167,23 @@ export function DanmakuPanel() {
           danmaku.map((item) => (
             <div
               key={item.id}
-              className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              className="p-2 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition"
             >
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-xs text-gray-500">
-                  {formatDistanceToNow(item.timestamp, { addSuffix: true, locale: zhCN })}
-                </span>
-                {item.platform && (
-                  <span className="text-xs px-2 py-1 bg-primary-100 dark:bg-primary-900 rounded">
-                    {item.platform}
+              <div className="flex justify-between items-center gap-1">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-xs text-gray-500 shrink-0">
+                    {timeAgo(item.timestamp)}
                   </span>
-                )}
+                  <span className="text-xs text-gray-400 truncate">{item.text}</span>
+                </div>
+                <button
+                  onClick={() => handleGenerateResponse(item.text)}
+                  disabled={loading}
+                  className="shrink-0 px-2 py-0.5 text-xs bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 rounded hover:bg-primary-200 dark:hover:bg-primary-800 transition disabled:opacity-50"
+                >
+                  💬
+                </button>
               </div>
-              <p className="text-sm mb-2">{item.text}</p>
-              <button
-                onClick={() => handleGenerateResponse(item.text)}
-                disabled={loading}
-                className="w-full px-3 py-1.5 text-sm bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 rounded hover:bg-primary-200 dark:hover:bg-primary-800 transition disabled:opacity-50"
-              >
-                💬 生成回复
-              </button>
             </div>
           ))
         )}
