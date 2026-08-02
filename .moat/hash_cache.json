@@ -14,11 +14,11 @@
     "cached_at": "2026-07-24T22:29:52.490989"
   },
   "agent/run_agent_v2.py": {
-    "hash": "4f9ddf2021ebb6fc",
-    "mtime": 1784898060.913308,
-    "size": 988,
-    "lines": 42,
-    "cached_at": "2026-07-24T22:29:52.488960"
+    "hash": "432d726dca5af427",
+    "mtime": 1785499897.6100624,
+    "size": 1154,
+    "lines": 47,
+    "cached_at": "2026-08-03T07:50:12.374522"
   },
   "agent/test_phase1.py": {
     "hash": "2635634d6a09959f",
@@ -28,150 +28,395 @@
     "cached_at": "2026-07-24T22:29:52.490526"
   },
   "agent/one_memory_adapter/memory_manager.py": {
-    "hash": "a19b51e55787cb66",
-    "mtime": 1784899891.5098102,
-    "size": 7520,
-    "lines": 263,
-    "cached_at": "2026-07-24T22:29:52.491296"
+    "hash": "fbc0b7e9cda0a27b",
+    "mtime": 1784987360.58769,
+    "size": 7556,
+    "lines": 265,
+    "cached_at": "2026-08-03T07:50:12.372627"
   },
   "agent/one_memory_adapter/client.py": {
-    "hash": "29f901bbeb1f919e",
-    "mtime": 1784899684.667492,
-    "size": 14742,
-    "lines": 396,
-    "cached_at": "2026-07-24T22:29:52.492377"
+    "hash": "a98e51defa2d6627",
+    "mtime": 1785016207.2404213,
+    "size": 15435,
+    "lines": 409,
+    "cached_at": "2026-08-03T07:50:12.375821"
   },
   "agent/one_memory_adapter/vector_store.py": {
-    "hash": "15ba6b648cc86744",
-    "mtime": 1784898776.6915443,
-    "size": 3083,
-    "lines": 132,
-    "cached_at": "2026-07-24T22:29:52.492648"
+    "hash": "4c8af2a8ade649b3",
+    "mtime": 1784987360.5893626,
+    "size": 3119,
+    "lines": 134,
+    "cached_at": "2026-08-03T07:50:12.374890"
   },
   "agent/one_memory_adapter/memory_bridge.py": {
     "hash": "15a684cba2681dd0",
-    "mtime": 1784898770.8794243,
+    "mtime": 1784985976.4533117,
     "size": 5275,
     "lines": 182,
-    "cached_at": "2026-07-24T22:29:52.493539"
+    "cached_at": "2026-08-03T07:50:12.376371"
   },
   "agent/one_memory_adapter/__init__.py": {
     "hash": "42eabc02cafa700c",
-    "mtime": 1784899845.7880151,
+    "mtime": 1784985976.4517045,
     "size": 402,
     "lines": 20,
-    "cached_at": "2026-07-24T22:29:52.493319"
+    "cached_at": "2026-08-03T07:50:12.376176"
   },
   "agent/one_memory_adapter/test.py": {
     "hash": "b695497c339a4c57",
-    "mtime": 1784898779.9385488,
+    "mtime": 1784985976.4542863,
     "size": 2517,
     "lines": 88,
-    "cached_at": "2026-07-24T22:29:52.494513"
+    "cached_at": "2026-08-03T07:50:12.377175"
   },
   "agent/one_memory_adapter/exceptions.py": {
     "hash": "eda994215ae772a8",
-    "mtime": 1784898767.5399911,
+    "mtime": 1784985976.4525805,
     "size": 334,
     "lines": 24,
-    "cached_at": "2026-07-24T22:29:52.494196"
+    "cached_at": "2026-08-03T07:50:12.377810"
   },
   "agent/agent_core/config.py": {
     "hash": "40e54e8bd126fc21",
-    "mtime": 1784897321.5862796,
+    "mtime": 1784985976.4426093,
     "size": 1079,
     "lines": 46,
-    "cached_at": "2026-07-24T22:29:52.495438"
+    "cached_at": "2026-08-03T07:50:12.380423"
   },
   "agent/agent_core/server.py": {
-    "hash": "1768c6ee1ddf6d23",
-    "mtime": 1784903230.155856,
-    "size": 13495,
-    "lines": 337,
-    "cached_at": "2026-07-24T22:29:52.495223"
+    "hash": "36cd3bbd296830b4",
+    "mtime": 1785675128.2622802,
+    "size": 26144,
+    "lines": 636,
+    "cached_at": "2026-08-03T07:50:12.380032"
   },
   "agent/agent_core/llm/__init__.py": {
     "hash": "7db9573ac162cfd9",
-    "mtime": 1784897411.3520863,
+    "mtime": 1784985976.4466295,
     "size": 171,
     "lines": 7,
-    "cached_at": "2026-07-24T22:29:52.496779"
+    "cached_at": "2026-08-03T07:50:12.382133"
   },
   "agent/agent_core/__init__.py": {
     "hash": "cb742ef1d324969b",
-    "mtime": 1784897426.7619114,
+    "mtime": 1784985976.44204,
     "size": 453,
     "lines": 14,
-    "cached_at": "2026-07-24T22:29:52.496602"
+    "cached_at": "2026-08-03T07:50:12.381447"
   },
   "agent/agent_core/llm/prompts.py": {
     "hash": "959befafa946d65a",
-    "mtime": 1784897320.8320894,
+    "mtime": 1784985976.447346,
     "size": 1979,
     "lines": 59,
-    "cached_at": "2026-07-24T22:29:52.496451"
+    "cached_at": "2026-08-03T07:50:12.382656"
   },
   "agent/agent_core/llm/router.py": {
-    "hash": "7c81ccdfb459654f",
-    "mtime": 1784897317.8648303,
-    "size": 2942,
-    "lines": 102,
-    "cached_at": "2026-07-24T22:29:52.497087"
+    "hash": "7f78b2c06021cd2b",
+    "mtime": 1784991243.166573,
+    "size": 5482,
+    "lines": 170,
+    "cached_at": "2026-08-03T07:50:12.383528"
   },
   "agent/agent_core/memory/__init__.py": {
-    "hash": "92dbe0257a42a9fe",
-    "mtime": 1784897410.2518182,
-    "size": 90,
-    "lines": 6,
-    "cached_at": "2026-07-24T22:29:52.498471"
+    "hash": "841d51cc28f0b10e",
+    "mtime": 1785017583.3138933,
+    "size": 374,
+    "lines": 11,
+    "cached_at": "2026-08-03T07:50:12.381946"
   },
   "agent/agent_core/memory/manager.py": {
-    "hash": "449a6dd27f4db24f",
-    "mtime": 1784898107.7158077,
-    "size": 3995,
-    "lines": 131,
-    "cached_at": "2026-07-24T22:29:52.498331"
+    "hash": "2d0785f1f5c85a54",
+    "mtime": 1784987360.5815294,
+    "size": 4031,
+    "lines": 133,
+    "cached_at": "2026-08-03T07:50:12.384923"
   },
   "agent/agent_core/danmaku/__init__.py": {
-    "hash": "b12e1de72c48e85f",
-    "mtime": 1784899965.6961687,
-    "size": 303,
+    "hash": "9156ee43c2388988",
+    "mtime": 1785495023.412615,
+    "size": 415,
     "lines": 12,
-    "cached_at": "2026-07-24T22:29:52.498828"
+    "cached_at": "2026-08-03T07:50:12.386728"
   },
   "agent/agent_core/danmaku/scraper.py": {
-    "hash": "7b1fa869b2b1a5c0",
-    "mtime": 1784899986.2908385,
-    "size": 9246,
-    "lines": 291,
-    "cached_at": "2026-07-24T22:29:52.498651"
+    "hash": "c49db6f32cc2b740",
+    "mtime": 1785504810.6453996,
+    "size": 15834,
+    "lines": 419,
+    "cached_at": "2026-08-03T07:50:12.385972"
   },
   "agent/agent_core/danmaku/processor.py": {
-    "hash": "a33c1ddfe2b8203f",
-    "mtime": 1784900558.7648067,
-    "size": 3352,
-    "lines": 127,
-    "cached_at": "2026-07-24T22:29:52.500099"
+    "hash": "66bcf42f11596b94",
+    "mtime": 1785671769.9700847,
+    "size": 10660,
+    "lines": 304,
+    "cached_at": "2026-08-03T07:50:12.386881"
   },
   "agent/agent_core/danmaku/responder.py": {
-    "hash": "7989bf54380d617a",
-    "mtime": 1784902266.285773,
-    "size": 7529,
-    "lines": 233,
-    "cached_at": "2026-07-24T22:29:52.500227"
+    "hash": "faeabc1cfe5a4a9b",
+    "mtime": 1785506339.6371102,
+    "size": 9354,
+    "lines": 280,
+    "cached_at": "2026-08-03T07:50:12.387091"
   },
   "agent/agent_core/knowledge/__init__.py": {
     "hash": "0de6cba81162053b",
-    "mtime": 1784897410.8337314,
+    "mtime": 1784985976.4451344,
     "size": 93,
     "lines": 6,
-    "cached_at": "2026-07-24T22:29:52.500024"
+    "cached_at": "2026-08-03T07:50:12.388615"
   },
   "agent/agent_core/knowledge/manager.py": {
-    "hash": "dfa31396ecfbf161",
-    "mtime": 1784902216.7866154,
-    "size": 8126,
-    "lines": 244,
-    "cached_at": "2026-07-24T22:29:52.500357"
+    "hash": "d03b91a96145e3ae",
+    "mtime": 1785536868.1835635,
+    "size": 10444,
+    "lines": 279,
+    "cached_at": "2026-08-03T07:50:12.389017"
+  },
+  "agent/captiocr_adapter/bridge.py": {
+    "hash": "84e6d74859bd44c7",
+    "mtime": 1784987360.5841951,
+    "size": 9708,
+    "lines": 242,
+    "cached_at": "2026-08-03T07:50:12.378482"
+  },
+  "agent/captiocr_adapter/config.py": {
+    "hash": "b79657a74eab133b",
+    "mtime": 1784987360.5848382,
+    "size": 391,
+    "lines": 17,
+    "cached_at": "2026-08-03T07:50:12.377661"
+  },
+  "agent/captiocr_adapter/__init__.py": {
+    "hash": "249c3576164af314",
+    "mtime": 1784987360.5831077,
+    "size": 522,
+    "lines": 20,
+    "cached_at": "2026-08-03T07:50:12.378760"
+  },
+  "agent/agent_core/error_bus.py": {
+    "hash": "e394884f5e327676",
+    "mtime": 1785670902.112063,
+    "size": 1906,
+    "lines": 71,
+    "cached_at": "2026-08-03T07:50:12.381508"
+  },
+  "agent/agent_core/memory/ai_memory.py": {
+    "hash": "51ed1e18221d2396",
+    "mtime": 1785019117.105773,
+    "size": 8945,
+    "lines": 258,
+    "cached_at": "2026-08-03T07:50:12.384388"
+  },
+  "agent/agent_core/memory/mcp_client.py": {
+    "hash": "05914c6de3aa85f9",
+    "mtime": 1785541023.7493565,
+    "size": 18528,
+    "lines": 555,
+    "cached_at": "2026-08-03T07:50:12.383949"
+  },
+  "agent/agent_core/danmaku/ocr_scripts/macos_vision_ocr.py": {
+    "hash": "37c6fdef5a861c72",
+    "mtime": 1784987360.5764992,
+    "size": 2357,
+    "lines": 78,
+    "cached_at": "2026-08-03T07:50:12.388318"
+  },
+  "agent/scripts/run_selector.py": {
+    "hash": "39b91c1bee8bf9d3",
+    "mtime": 1785502153.5579844,
+    "size": 1506,
+    "lines": 44,
+    "cached_at": "2026-08-03T07:50:12.388412"
+  },
+  "agent/vendor/captiocr/captiocr/__init__.py": {
+    "hash": "2aee60ee8e36b128",
+    "mtime": 1784987360.6207855,
+    "size": 926,
+    "lines": 29,
+    "cached_at": "2026-08-03T07:50:12.390297"
+  },
+  "agent/vendor/captiocr/CaptiOCR.py": {
+    "hash": "0a9e47da0cbdde33",
+    "mtime": 1784987360.6100783,
+    "size": 2374,
+    "lines": 66,
+    "cached_at": "2026-08-03T07:50:12.390559"
+  },
+  "agent/vendor/captiocr/captiocr/main.py": {
+    "hash": "811244629c0349d1",
+    "mtime": 1784987360.6354997,
+    "size": 4070,
+    "lines": 118,
+    "cached_at": "2026-08-03T07:50:12.390440"
+  },
+  "agent/vendor/captiocr/captiocr/ui/main_window.py": {
+    "hash": "83d5043cbaaddfea",
+    "mtime": 1784987360.6495109,
+    "size": 45359,
+    "lines": 1134,
+    "cached_at": "2026-08-03T07:50:12.391541"
+  },
+  "agent/vendor/captiocr/captiocr/ui/__init__.py": {
+    "hash": "6afe6f2535afd754",
+    "mtime": 1784987360.637992,
+    "size": 11,
+    "lines": 1,
+    "cached_at": "2026-08-03T07:50:12.392973"
+  },
+  "agent/vendor/captiocr/captiocr/ui/base_window.py": {
+    "hash": "793ad7d2997bc383",
+    "mtime": 1784987360.6389194,
+    "size": 5193,
+    "lines": 183,
+    "cached_at": "2026-08-03T07:50:12.392214"
+  },
+  "agent/vendor/captiocr/captiocr/ui/dialog_base.py": {
+    "hash": "e5fad5fb8b1ee21c",
+    "mtime": 1784987360.6436532,
+    "size": 4338,
+    "lines": 148,
+    "cached_at": "2026-08-03T07:50:12.394189"
+  },
+  "agent/vendor/captiocr/captiocr/ui/capture_window.py": {
+    "hash": "5b75f089c9b46ff8",
+    "mtime": 1784987360.641616,
+    "size": 9057,
+    "lines": 237,
+    "cached_at": "2026-08-03T07:50:12.393146"
+  },
+  "agent/vendor/captiocr/captiocr/ui/selection_window.py": {
+    "hash": "fd1b86780fc68f20",
+    "mtime": 1785502992.3303862,
+    "size": 16385,
+    "lines": 393,
+    "cached_at": "2026-08-03T07:50:12.394361"
+  },
+  "agent/vendor/captiocr/captiocr/ui/dialogs.py": {
+    "hash": "b88240085e30924b",
+    "mtime": 1784987360.6470218,
+    "size": 20992,
+    "lines": 530,
+    "cached_at": "2026-08-03T07:50:12.395465"
+  },
+  "agent/vendor/captiocr/captiocr/core/__init__.py": {
+    "hash": "8e637ae4bfc5a30a",
+    "mtime": 1784987360.6283112,
+    "size": 13,
+    "lines": 1,
+    "cached_at": "2026-08-03T07:50:12.396326"
+  },
+  "agent/vendor/captiocr/captiocr/core/text_processor.py": {
+    "hash": "b8cb54108bf29907",
+    "mtime": 1784987360.634463,
+    "size": 43446,
+    "lines": 1030,
+    "cached_at": "2026-08-03T07:50:12.395640"
+  },
+  "agent/vendor/captiocr/captiocr/config/__init__.py": {
+    "hash": "0b3f4ec912477f25",
+    "mtime": 1784987360.6215441,
+    "size": 22,
+    "lines": 1,
+    "cached_at": "2026-08-03T07:50:12.398513"
+  },
+  "agent/vendor/captiocr/captiocr/config/constants.py": {
+    "hash": "2e8e32e10fe083dd",
+    "mtime": 1784988244.7431808,
+    "size": 6335,
+    "lines": 178,
+    "cached_at": "2026-08-03T07:50:12.398122"
+  },
+  "agent/vendor/captiocr/captiocr/core/capture.py": {
+    "hash": "266409a08de14603",
+    "mtime": 1784987360.6309702,
+    "size": 21586,
+    "lines": 497,
+    "cached_at": "2026-08-03T07:50:12.397907"
+  },
+  "agent/vendor/captiocr/captiocr/core/ocr.py": {
+    "hash": "1d35d99ce6c3c597",
+    "mtime": 1784987360.632505,
+    "size": 24442,
+    "lines": 629,
+    "cached_at": "2026-08-03T07:50:12.396795"
+  },
+  "agent/vendor/captiocr/captiocr/config/app_info.py": {
+    "hash": "fbda63cf1296e95f",
+    "mtime": 1784987360.6227365,
+    "size": 4618,
+    "lines": 148,
+    "cached_at": "2026-08-03T07:50:12.398235"
+  },
+  "agent/vendor/captiocr/captiocr/utils/__init__.py": {
+    "hash": "90c5cce2855d3879",
+    "mtime": 1784987360.6522222,
+    "size": 14,
+    "lines": 1,
+    "cached_at": "2026-08-03T07:50:12.400291"
+  },
+  "agent/vendor/captiocr/captiocr/utils/monitor_manager.py": {
+    "hash": "c1a4f2cdea1b65a5",
+    "mtime": 1784987360.6595166,
+    "size": 18801,
+    "lines": 468,
+    "cached_at": "2026-08-03T07:50:12.400158"
+  },
+  "agent/vendor/captiocr/captiocr/config/settings.py": {
+    "hash": "37acae2b35b6aebb",
+    "mtime": 1784987360.6264613,
+    "size": 12560,
+    "lines": 345,
+    "cached_at": "2026-08-03T07:50:12.400335"
+  },
+  "agent/vendor/captiocr/captiocr/utils/logger.py": {
+    "hash": "0bf13293619b7ded",
+    "mtime": 1784987360.6552048,
+    "size": 3087,
+    "lines": 110,
+    "cached_at": "2026-08-03T07:50:12.400487"
+  },
+  "agent/vendor/captiocr/captiocr/utils/update_checker.py": {
+    "hash": "e54876d2ba9c42f3",
+    "mtime": 1784987360.661653,
+    "size": 2131,
+    "lines": 64,
+    "cached_at": "2026-08-03T07:50:12.402227"
+  },
+  "agent/vendor/captiocr/captiocr/utils/file_manager.py": {
+    "hash": "d34a41f9644d60fd",
+    "mtime": 1784987360.6531167,
+    "size": 5231,
+    "lines": 176,
+    "cached_at": "2026-08-03T07:50:12.401932"
+  },
+  "agent/vendor/captiocr/captiocr/utils/language_manager.py": {
+    "hash": "fb0d1e406dc097fd",
+    "mtime": 1784987360.6542985,
+    "size": 10674,
+    "lines": 294,
+    "cached_at": "2026-08-03T07:50:12.402383"
+  },
+  "agent/vendor/captiocr/captiocr/models/__init__.py": {
+    "hash": "e6d8e449ccbe2226",
+    "mtime": 1784987360.6362767,
+    "size": 15,
+    "lines": 1,
+    "cached_at": "2026-08-03T07:50:12.403352"
+  },
+  "agent/vendor/captiocr/scripts/reprocess_capture.py": {
+    "hash": "dd81e54db76114f2",
+    "mtime": 1784987360.708584,
+    "size": 5430,
+    "lines": 152,
+    "cached_at": "2026-08-03T07:50:12.403295"
+  },
+  "agent/vendor/captiocr/captiocr/models/capture_config.py": {
+    "hash": "8eedc5c6766e3a68",
+    "mtime": 1784987360.6371121,
+    "size": 12401,
+    "lines": 298,
+    "cached_at": "2026-08-03T07:50:12.402428"
   }
 }

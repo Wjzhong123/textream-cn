@@ -1,0 +1,19 @@
+# Moat 忽略规则
+# 跳过构建产物、第三方库、大型数据目录
+node_modules/
+dist/
+build/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.git/
+third_party/*
+!third_party/AI-memory/
+vendor/
+fonts/
+images/
+docs/video.mp4
+docs/video.gif
+*.log
+*.db

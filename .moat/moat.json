@@ -1,53 +1,108 @@
 {
   "project_name": "textream-cn-master",
-  "version": "1.0",
+  "version": "2.0",
   "rules": {
     "layer_enforcement": {
       "enabled": true,
-      "description": "\u7981\u6b62\u8de8\u5c42\u8c03\u7528\uff08\u5982 controller \u76f4\u63a5\u8c03\u7528 model\uff09",
+      "description": "禁止跨层调用（如 controller 直接调用 model）",
       "severity": "high"
     },
     "api_authentication": {
       "enabled": true,
-      "description": "API \u63a5\u53e3\u5fc5\u987b\u7ecf\u8fc7\u9274\u6743\u4e2d\u95f4\u4ef6",
+      "description": "API 接口必须经过鉴权中间件",
       "severity": "critical",
       "auto_detect": true
     },
     "race_condition": {
       "enabled": true,
-      "description": "\u68c0\u6d4b pendingMessageRef \u7b49\u7ade\u6001\u6761\u4ef6",
+      "description": "检测 pendingMessageRef 等竞态条件",
       "severity": "high",
       "patterns": [
         "pendingMessageRef",
-        "useEffect \u7f3a\u5c11\u4f9d\u8d56"
+        "useEffect 缺少依赖"
       ]
     },
     "sql_injection": {
       "enabled": true,
-      "description": "\u7981\u6b62\u76f4\u63a5\u62fc\u63a5 SQL \u5b57\u7b26\u4e32",
+      "description": "禁止直接拼接 SQL 字符串",
       "severity": "critical",
       "auto_detect": true
     },
     "error_handling": {
       "enabled": true,
-      "description": "async \u51fd\u6570\u5fc5\u987b\u6709 try/except",
+      "description": "async 函数必须有 try/except",
       "severity": "medium",
+      "auto_detect": true
+    },
+    "async_safety": {
+      "enabled": true,
+      "description": "检测同步函数中调用异步函数未 await",
+      "severity": "high",
+      "auto_detect": true
+    },
+    "import_completeness": {
+      "enabled": true,
+      "description": "检测导入的模块是否真实存在",
+      "severity": "high",
+      "auto_detect": true
+    },
+    "secret_detection": {
+      "enabled": true,
+      "description": "检测硬编码密钥和 API Token",
+      "severity": "critical",
+      "auto_detect": true
+    },
+    "dependency_security": {
+      "enabled": true,
+      "description": "检测依赖中的已知漏洞",
+      "severity": "high",
+      "auto_detect": true
+    },
+    "unused_exports": {
+      "enabled": true,
+      "description": "检测未使用的导出符号",
+      "severity": "low",
       "auto_detect": true
     }
   },
   "auto_detect": {
     "core_areas": true,
     "entry_points": true,
-    "log_path": true
+    "log_path": true,
+    "api_endpoints": true,
+    "architecture": true,
+    "test_files": true
   },
   "log_path": "logs/backend.log",
-  "filter_pattern": "ERROR|Traceback|Process exited",
+  "filter_pattern": "ERROR|Traceback|Process exited|Exception",
   "check_on_commit": true,
-  "auto_monitor": false,
+  "auto_monitor": true,
+  "monitor_interval": 30,
+  "preflight": {
+    "enabled": true,
+    "auto_run": true,
+    "files_auto_detect": true
+  },
+  "baseline": {
+    "enabled": true,
+    "auto_update": true,
+    "compare_on_check": true
+  },
+  "evolution": {
+    "enabled": true,
+    "track_metrics": true,
+    "auto_propose": false
+  },
   "python": {
-    "framework": "fastapi"
+    "framework": "fastapi",
+    "entry_points": ["agent/run_agent_v2.py", "agent/agent_core/server.py"]
   },
   "typescript": {
-    "framework": "react"
-  }
+    "framework": "react",
+    "entry_points": ["web-console/src/main.tsx", "web-console/src/index.css"]
+  },
+  "test_paths": [
+    "tests/moat/",
+    "agent/agent_core/"
+  ]
 }

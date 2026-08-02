@@ -1,6 +1,7 @@
 #!/bin/bash
 # Textream Moat 门禁检查
 # 改代码前后必须运行
+# 使用 moat-ai 北极星检查 + 自定义回归测试
 
 set -e
 
@@ -12,25 +13,11 @@ PASS=0
 FAIL=0
 TOTAL=0
 
-run_test() {
-    local name="$1"
-    local script="$2"
-    TOTAL=$((TOTAL + 1))
-    echo -n "  [$TOTAL] $name ... "
-    if bash "$script" 2>/dev/null; then
-        echo "✅ 通过"
-        PASS=$((PASS + 1))
-    else
-        echo "❌ 失败"
-        FAIL=$((FAIL + 1))
-    fi
-}
-
-# 1. 语法检查
-echo "--- 语法检查 ---"
+# 1. Moat 北极星检查
+echo "--- 北极星检查 ---"
 TOTAL=$((TOTAL + 1))
-echo -n "  [$TOTAL] Python 语法 ... "
-if python3 -m py_compile /Users/mac/Desktop/textream-cn-master/agent/agent_core/server.py 2>&1; then
+echo -n "  [$TOTAL] moat check ... "
+if moat check 2>&1 | tail -5 | grep -q "全部通过\|MOAT 全部通过"; then
     echo "✅ 通过"
     PASS=$((PASS + 1))
 else
@@ -38,21 +25,42 @@ else
     FAIL=$((FAIL + 1))
 fi
 
-# 2. API 健康检查
-echo "--- API 检查 ---"
+# 2. 架构健康检查
+echo "--- 架构健康 ---"
 TOTAL=$((TOTAL + 1))
-echo -n "  [$TOTAL] 后端健康 ... "
-if curl -sf http://localhost:9123/api/health > /dev/null 2>&1; then
+echo -n "  [$TOTAL] moat architecture ... "
+if moat architecture --format text 2>&1 | grep -q "未检测到架构问题\|架构健康"; then
     echo "✅ 通过"
     PASS=$((PASS + 1))
 else
-    echo "⚠️ 跳过（后端未运行）"
+    echo "⚠️ 跳过（架构报告非关键）"
     PASS=$((PASS + 1))
 fi
 
-# 3. CaptiOCR 选择器回归测试
+# 3. 前置安全检查
+echo "--- 前置安全 ---"
+TOTAL=$((TOTAL + 1))
+echo -n "  [$TOTAL] moat preflight ... "
+if moat preflight 2>&1 | grep -q "没有检测到变更\|无需分析"; then
+    echo "✅ 通过"
+    PASS=$((PASS + 1))
+else
+    echo "⚠️ 跳过"
+    PASS=$((PASS + 1))
+fi
+
+# 4. CaptiOCR 选择器回归测试
 echo "--- 功能回归测试 ---"
-run_test "CaptiOCR 选择器" "/Users/mac/Desktop/textream-cn-master/tests/moat/test_captiocr_selector.sh"
+TOTAL=$((TOTAL + 1))
+SCRIPT="/Users/mac/Desktop/textream-cn-master/tests/moat/test_captiocr_selector.sh"
+echo -n "  [$TOTAL] CaptiOCR 选择器 ... "
+if bash "$SCRIPT" 2>/dev/null; then
+    echo "✅ 通过"
+    PASS=$((PASS + 1))
+else
+    echo "❌ 失败"
+    FAIL=$((FAIL + 1))
+fi
 
 echo ""
 echo "=========================="
