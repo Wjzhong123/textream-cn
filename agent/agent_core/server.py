@@ -24,7 +24,10 @@ if str(agent_dir) not in sys.path:
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi.staticfiles import StaticFiles
+
 from agent_core.config import get_settings
+from agent_core.error_bus import error_bus
 from agent_core.knowledge.manager import KnowledgeManager
 from agent_core.llm.router import LLMRouter
 from agent_core.memory import AIMemoryManager, LocalMemoryManager
@@ -424,8 +427,12 @@ def create_app() -> FastAPI:
 请基于以上信息回答用户的问题。如果记忆和知识库中没有相关信息，请如实告知，并使用你的通用知识给出合理建议。
 回答风格：简洁、专业、实用。"""
 
-        reply = llm_router.chat_with_system(message, system_prompt)
-        return {"reply": reply}
+        try:
+            reply = llm_router.chat_with_system(message, system_prompt)
+            return {"reply": reply}
+        except Exception as e:
+            error_bus.report("llm", "error", f"LLM 聊天失败: {e}", {"message": message[:50]})
+            raise
 
     # ── Danmaku ──────────────────────────────────────────────────────────────
     @app.get("/api/danmaku/status")
@@ -455,9 +462,11 @@ def create_app() -> FastAPI:
             danmaku_processor._capture_task = task
             return {"status": "started"}
         except ValueError as e:
+            error_bus.report("danmaku", "error", f"启动弹幕捕获失败: {e}")
             raise __import__("fastapi").HTTPException(status_code=400, detail=str(e))
         except Exception as e:
             logger.error(f"Failed to start danmaku capture: {e}")
+            error_bus.report("danmaku", "error", f"启动弹幕捕获异常: {e}")
             raise __import__("fastapi").HTTPException(status_code=500, detail=str(e))
 
     @app.post("/api/danmaku/stop")
@@ -594,5 +603,33 @@ def create_app() -> FastAPI:
                 "default_model": cfg["default_model"],
             })
         return {"providers": providers}
+
+    # ── Error Bus ──────────────────────────────────────────────────────────
+    @app.get("/api/errors")
+    async def get_errors(limit: int = 50, level: str | None = None):
+        """获取错误总线中的错误列表"""
+        return {"errors": error_bus.list(limit=limit, level=level), "total": error_bus.count}
+
+    @app.post("/api/errors/clear")
+    async def clear_errors():
+        """清空错误总线"""
+        error_bus.clear()
+        return {"status": "cleared"}
+
+    # ── Web Console (静态文件) ─────────────────────────────────────────────
+    web_console_dist = agent_dir / "web-console-dist"
+    if web_console_dist.is_dir():
+        app.mount(
+            "/",
+            StaticFiles(directory=str(web_console_dist), html=True),
+            name="web_console",
+        )
+        print(f"   🌐 Web Console 静态文件: {web_console_dist}")
+    else:
+        print(f"   ℹ️  Web Console 未构建（{web_console_dist} 不存在）")
+
+    # ── 错误总线注入（全局可用） ───────────────────────────────────────────
+    # 将 error_bus 注入到 app.state，方便各路由访问
+    app.state.error_bus = error_bus
 
     return app

@@ -5,7 +5,7 @@ import { MemoryManager } from './MemoryManager';
 import { KnowledgeBase } from './KnowledgeBase';
 import { SettingsModal } from './SettingsModal';
 
-type View = 'danmaku' | 'memory' | 'knowledge';
+type View = 'danmaku' | 'response' | 'memory' | 'knowledge';
 
 interface ServerConfig {
   url: string;
@@ -18,19 +18,23 @@ interface ServerConfig {
   oneApiKey: string;
 }
 
+const NAV_ITEMS: { key: View; label: string; icon: string }[] = [
+  { key: 'danmaku', label: '弹幕监控', icon: '◉' },
+  { key: 'response', label: '救场话术', icon: '◇' },
+  { key: 'memory', label: '记忆管理', icon: '⊞' },
+  { key: 'knowledge', label: '知识库', icon: '⊡' },
+];
+
 export function App() {
   const [connected, setConnected] = useState(false);
   const [currentView, setCurrentView] = useState<View>('danmaku');
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<ServerConfig>(() => {
-    // Load from localStorage or use defaults
     const saved = localStorage.getItem('textream_config');
     if (saved) {
       try {
         return JSON.parse(saved);
-      } catch {
-        // Invalid JSON, use defaults
-      }
+      } catch { /* ignore */ }
     }
     return {
       url: 'http://localhost:9123',
@@ -44,41 +48,25 @@ export function App() {
     };
   });
 
-  // Health check function
   const checkHealth = async () => {
     try {
       const response = await fetch(`${config.url}/api/health`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        // Add cache busting
+        headers: { 'Content-Type': 'application/json' },
         cache: 'no-cache',
       });
-
       if (response.ok) {
         const data = await response.json();
-        if (data.status === 'ok') {
-          setConnected(true);
-          return true;
-        }
+        setConnected(data.status === 'ok');
+        return;
       }
-      setConnected(false);
-      return false;
-    } catch (error) {
-      console.error('Health check failed:', error);
-      setConnected(false);
-      return false;
-    }
+    } catch { /* offline */ }
+    setConnected(false);
   };
 
   useEffect(() => {
-    // Initial health check
     checkHealth();
-
-    // Periodic health check every 5 seconds
     const interval = setInterval(checkHealth, 5000);
-
     return () => clearInterval(interval);
   }, [config.url]);
 
@@ -86,10 +74,7 @@ export function App() {
     setConfig(newConfig);
     localStorage.setItem('textream_config', JSON.stringify(newConfig));
     setShowSettings(false);
-    // Re-check connection with new URL
     await checkHealth();
-
-    // 同步 LLM 配置到后端 API（运行时生效，自动持久化）
     try {
       await fetch(`${config.url}/api/models/settings`, {
         method: 'PUT',
@@ -101,99 +86,87 @@ export function App() {
           model: newConfig.llmModel,
         }),
       });
-    } catch (e) {
-      console.warn('LLM config sync failed (backend may not support it yet):', e);
-    }
+    } catch { /* sync best-effort */ }
   };
 
-  const navItems = [
-    { key: 'danmaku' as const, label: '弹幕监控', icon: '💬' },
-    { key: 'memory' as const, label: '记忆管理', icon: '🧠' },
-    { key: 'knowledge' as const, label: '知识库', icon: '📚' },
-  ];
-
   return (
-    <div className="flex h-screen bg-white dark:bg-gray-900">
-      {/* Sidebar Navigation */}
-      <nav className="w-16 md:w-56 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex flex-col">
-        {/* Logo */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+    <div className="flex h-screen bg-bg-primary overflow-hidden">
+      {/* ── 侧边栏 ── */}
+      <nav className="w-56 flex flex-col border-r border-border-subtle bg-bg-secondary/50">
+        {/* Logo 区域 */}
+        <div className="px-5 pt-5 pb-4">
           <div className="flex items-center gap-3">
-            <div className="text-2xl">🎙️</div>
-            <div className="hidden md:block">
-              <h1 className="text-lg font-bold">Textream</h1>
-              <p className="text-xs text-gray-500">直播 AI 军师</p>
+            <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-accent text-sm font-semibold">
+              T
+            </div>
+            <div>
+              <h1 className="text-sm font-semibold text-text-primary">Textream</h1>
+              <p className="text-[11px] text-text-muted">直播 AI 军师</p>
             </div>
           </div>
         </div>
 
-        {/* Navigation */}
-        <div className="flex-1 p-2 space-y-1">
-          {navItems.map((item) => (
+        {/* 导航项 */}
+        <div className="flex-1 px-3 space-y-1">
+          {NAV_ITEMS.map((item) => (
             <button
               key={item.key}
               onClick={() => setCurrentView(item.key)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm rounded-full transition-all duration-150 ${
                 currentView === item.key
-                  ? 'bg-primary-500 text-white'
-                  : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+                  ? 'bg-accent/15 text-accent border border-accent/25 shadow-[0_0_16px_rgba(192,132,252,0.1)]'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-white/5 border border-transparent'
               }`}
             >
-              <span className="text-xl">{item.icon}</span>
-              <span className="hidden md:block text-sm">{item.label}</span>
+              <span className="text-base opacity-70">{item.icon}</span>
+              <span>{item.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Bottom Actions */}
-        <div className="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
-          {/* Settings Button */}
+        {/* 底部状态 */}
+        <div className="px-4 pb-4 pt-3 border-t border-border-subtle space-y-2.5">
+          {/* 设置按钮 */}
           <button
             onClick={() => setShowSettings(true)}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition"
-            title="设置"
+            className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-full transition-all duration-150"
           >
-            <span className="text-lg">⚙️</span>
-            <span className="hidden md:block">设置</span>
+            <span className="text-base opacity-50">⚙</span>
+            <span>设置</span>
           </button>
 
-          {/* Connection Status */}
-          <div className="flex items-center gap-2 text-xs">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                connected ? 'bg-success-500' : 'bg-gray-400'
-              }`}
-            />
-            <span className="hidden md:block text-gray-600 dark:text-gray-400">
+          {/* 连接状态 */}
+          <div className="flex items-center gap-2.5 px-4">
+            <span className={`status-dot ${connected ? 'status-dot-online' : 'bg-text-muted'}`} />
+            <span className="text-xs text-text-muted">
               {connected ? '服务已连接' : '服务未连接'}
             </span>
           </div>
 
-          {/* Server URL (shortened) */}
-          <div className="hidden md:block text-xs text-gray-500 truncate">
+          <div className="text-[11px] text-text-muted px-4 truncate">
             {config.url.replace('http://', '')}
           </div>
         </div>
       </nav>
 
-      {/* Main Content */}
+      {/* ── 主内容区 ── */}
       <main className="flex-1 flex overflow-hidden">
-        {/* Left Panel (Danmaku / Memory / Knowledge) */}
         <div className="flex-1 overflow-hidden">
           {currentView === 'danmaku' && <DanmakuPanel />}
+          {currentView === 'response' && <ResponseSidebar />}
           {currentView === 'memory' && <MemoryManager />}
           {currentView === 'knowledge' && <KnowledgeBase />}
         </div>
 
-        {/* Right Panel (Response Sidebar) - only show in danmaku mode */}
+        {/* 弹幕模式右侧面板 */}
         {currentView === 'danmaku' && (
-          <aside className="w-96 border-l border-gray-200 dark:border-gray-700">
+          <aside className="w-[380px] border-l border-border-subtle bg-bg-primary">
             <ResponseSidebar />
           </aside>
         )}
       </main>
 
-      {/* Settings Modal */}
+      {/* 设置弹窗 */}
       {showSettings && (
         <SettingsModal
           config={config}

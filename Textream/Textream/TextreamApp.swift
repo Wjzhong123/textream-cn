@@ -47,6 +47,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         // Always start the screenshot API (independent of director mode)
         TextreamService.shared.directorServer.startScreenshotAPIOnly()
 
+        // 🆕 自动拉起 Python Agent Core 后端
+        AgentCoreManager.shared.start()
+
         // Set window delegate to intercept close, disable tabs and fullscreen
         DispatchQueue.main.async {
             for window in NSApp.windows where !(window is NSPanel) {
@@ -76,6 +79,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
         NSApp.terminate(nil)
         return false
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // 🆕 退出时清理 Agent Core 子进程
+        AgentCoreManager.shared.stop()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

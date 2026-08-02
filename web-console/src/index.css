@@ -1,61 +1,247 @@
 @import "tailwindcss";
 
+/* ── Textream 灵动岛设计语言 ── */
 @theme {
-  /* Custom colors */
-  --color-primary-50: #f0f9ff;
-  --color-primary-100: #e0f2fe;
-  --color-primary-200: #bae6fd;
-  --color-primary-300: #7dd3fc;
-  --color-primary-400: #38bdf8;
-  --color-primary-500: #0ea5e9;
-  --color-primary-600: #0284c7;
-  --color-primary-700: #0369a1;
-  --color-primary-800: #075985;
-  --color-primary-900: #0c4a6e;
+  /* 深色主题色板 */
+  --color-bg-primary: #0a0a0b;
+  --color-bg-secondary: #1a1a1e;
+  --color-bg-glass: rgba(255, 255, 255, 0.04);
+  --color-bg-glass-hover: rgba(255, 255, 255, 0.08);
+  --color-bg-glass-active: rgba(192, 132, 252, 0.12);
 
-  --color-danger-500: #ef4444;
-  --color-danger-600: #dc2626;
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-accent: rgba(192, 132, 252, 0.25);
 
-  --color-success-500: #22c55e;
-  --color-success-600: #16a34a;
+  --color-text-primary: #f5f5f7;
+  --color-text-secondary: #86868b;
+  --color-text-muted: #5c5c62;
 
-  /* Base styles */
-  --font-sans: system-ui, -apple-system, sans-serif;
-  --font-heading: system-ui, -apple-system, sans-serif;
-  --font-mono: ui-monospace, Consolas, monospace;
+  --color-accent: #c084fc;
+  --color-accent-bg: rgba(192, 132, 252, 0.15);
+  --color-accent-glow: rgba(192, 132, 252, 0.2);
+
+  --color-danger: #f87171;
+  --color-danger-bg: rgba(248, 113, 113, 0.15);
+  --color-success: #4ade80;
+  --color-success-bg: rgba(74, 222, 128, 0.15);
+  --color-warning: #fbbf24;
+  --color-warning-bg: rgba(251, 191, 36, 0.15);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
 }
 
+/* ── 全局基础 ── */
 @layer base {
   :root {
-    --text: #6b6375;
-    --text-h: #08060d;
-    --bg: #fff;
-    --border: #e5e4e7;
-    --code-bg: #f4f3ec;
-    --accent: #aa3bff;
-    --accent-bg: rgba(170, 59, 255, 0.1);
-    --accent-border: rgba(170, 59, 255, 0.5);
+    color-scheme: dark;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --text: #9ca3af;
-      --text-h: #f3f4f6;
-      --bg: #16171d;
-      --border: #2e303a;
-      --code-bg: #1f2028;
-      --accent: #c084fc;
-      --accent-bg: rgba(192, 132, 252, 0.15);
-      --accent-border: rgba(192, 132, 252, 0.5);
-    }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.1) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.1);
+    border-radius: 99px;
   }
 
   body {
-    margin: 0;
     font-family: var(--font-sans);
-    color: var(--text);
-    background: var(--bg);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+    user-select: none;
   }
+
+  /* 可选中文本区域 */
+  .selectable-text {
+    user-select: text;
+  }
+}
+
+/* ── 玻璃质感工具类 ── */
+@utility glass {
+  background: var(--color-bg-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border-subtle);
+}
+
+@utility glass-hover {
+  background: var(--color-bg-glass-hover);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border-accent);
+}
+
+@utility glass-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 12px;
+  transition: all 0.15s ease;
+}
+
+@utility glass-card-hover {
+  background: var(--color-bg-glass-hover);
+  border-color: var(--color-border-accent);
+  box-shadow: 0 0 20px rgba(192, 132, 252, 0.08);
+}
+
+/* ── 胶囊按钮 ── */
+@utility pill {
+  border-radius: 999px;
+  transition: all 0.15s ease;
+}
+
+@utility pill-active {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  border: 1px solid var(--color-border-accent);
+  box-shadow: 0 0 16px rgba(192, 132, 252, 0.12);
+}
+
+@utility pill-inactive {
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid transparent;
+}
+
+@utility btn-accent {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  border: 1px solid var(--color-border-accent);
+  border-radius: 999px;
+  transition: all 0.15s ease;
+}
+
+@utility btn-accent-hover {
+  background: var(--color-accent-glow);
+  box-shadow: 0 0 20px rgba(192, 132, 252, 0.15);
+}
+
+/* ── 状态指示器 ── */
+@utility status-dot {
+  @apply inline-block rounded-full;
+  width: 6px;
+  height: 6px;
+  transition: all 0.3s ease;
+}
+
+@utility status-dot-online {
+  background: var(--color-success);
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.4);
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* ── 弹幕列表项 ── */
+@utility danmaku-item {
+  @apply glass-card;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+@utility danmaku-item-hover {
+  background: var(--color-bg-glass-hover);
+  border-color: var(--color-border-accent);
+}
+
+/* ── 错误面板 ── */
+@utility error-item {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@utility error-error {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+
+@utility error-warn {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+/* ── 输入框 ── */
+@utility input-glass {
+  background: var(--color-bg-glass);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  outline: none;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+@utility input-glass-focus {
+  border-color: var(--color-border-accent);
+  box-shadow: 0 0 12px rgba(192, 132, 252, 0.1);
+}
+
+/* ── 选择框 ── */
+@utility select-glass {
+  @apply input-glass;
+  appearance: none;
+  cursor: pointer;
+}
+
+/* ── 模态框 ── */
+@utility modal-overlay {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+@utility modal-content {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(192, 132, 252, 0.05);
+}
+
+/* ── 入口动画 ── */
+@utility fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@utility slide-in {
+  animation: slideIn 0.2s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
 }

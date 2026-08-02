@@ -1,0 +1,37 @@
+{
+  "appId": "com.textream.windows",
+  "productName": "Textream",
+  "directories": {
+    "output": "dist"
+  },
+  "files": [
+    "main.js",
+    "preload.js",
+    "overlay.html",
+    "assets/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "../agent",
+      "to": "agent",
+      "filter": [
+        "**/*",
+        "!.venv/**"
+      ]
+    }
+  ],
+  "win": {
+    "target": "nsis",
+    "icon": "assets/icon.png",
+    "artifactName": "Textream.Setup.${version}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "shortcutName": "Textream",
+    "installerIcon": "assets/icon.png",
+    "uninstallerIcon": "assets/icon.png",
+    "installerHeaderIcon": "assets/icon.png"
+  }
+}

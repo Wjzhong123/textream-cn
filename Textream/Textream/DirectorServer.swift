@@ -157,7 +157,7 @@ class DirectorServer {
             guard let data, error == nil else { conn.cancel(); return }
 
             let requestStr = String(decoding: data, as: UTF8.self)
-            let (path, params) = Self.parseHTTPRequest(requestStr)
+            let (method, path, params) = Self.parseHTTPRequest(requestStr)
             let response: Data
 
             switch path {
@@ -165,6 +165,8 @@ class DirectorServer {
                 response = self.handleScreenshotRequest(params: params)
             case "/api/capture-status":
                 response = self.handleCaptureStatus()
+            case let p where p.hasPrefix("/api/"):
+                response = self.proxyToAgentCore(method: method, path: p, requestStr: requestStr)
             default:
                 response = self.buildHTMLResponse()
             }
@@ -175,14 +177,15 @@ class DirectorServer {
         }
     }
 
-    /// Parse HTTP request line to extract path and query parameters.
-    /// Example: "GET /api/screenshot?x=0&y=0&w=200&h=50 HTTP/1.1" → ("/api/screenshot", ["x":"0", ...])
-    private static func parseHTTPRequest(_ request: String) -> (path: String, params: [String: String]) {
+    /// Parse HTTP request line to extract method, path and query parameters.
+    /// Example: "GET /api/screenshot?x=0&y=0&w=200&h=50 HTTP/1.1" → ("GET", "/api/screenshot", ["x":"0", ...])
+    private static func parseHTTPRequest(_ request: String) -> (method: String, path: String, params: [String: String]) {
         let lines = request.components(separatedBy: "\r\n")
-        guard let firstLine = lines.first else { return ("/", [:]) }
+        guard let firstLine = lines.first else { return ("GET", "/", [:]) }
         let parts = firstLine.components(separatedBy: " ")
-        guard parts.count >= 2 else { return ("/", [:]) }
+        guard parts.count >= 2 else { return ("GET", "/", [:]) }
 
+        let method = parts[0]
         let uri = parts[1]
         let uriParts = uri.components(separatedBy: "?")
         let path = uriParts[0]
@@ -199,7 +202,7 @@ class DirectorServer {
                 }
             }
         }
-        return (path, params)
+        return (method, path, params)
     }
 
     /// Build a JSON HTTP response with CORS headers.
@@ -307,6 +310,78 @@ class DirectorServer {
                 ? "Screen capture is available"
                 : "The screencapture tool may need Screen Recording permission.",
         ])
+    }
+
+    // MARK: - Agent Core Proxy
+
+    /// 代理 /api/* 请求到 Agent Core (port 9123)
+    /// 将 DirectorServer 收到的 HTTP 请求转发到 Python 后端，返回其结果。
+    private func proxyToAgentCore(method: String, path: String, requestStr: String) -> Data {
+        let agentPort = 9123
+        guard let url = URL(string: "http://127.0.0.1:\(agentPort)\(path)") else {
+            return Self.errorResponse(statusCode: 500, message: "Invalid proxy URL")
+        }
+
+        // 解析请求体（POST/PUT 时从请求字符串中提取）
+        let lines = requestStr.components(separatedBy: "\r\n")
+        var bodyData: Data?
+        var contentLength = 0
+
+        var inHeaders = true
+        for line in lines.dropFirst() { // 跳过请求行
+            if inHeaders {
+                if line.isEmpty {
+                    inHeaders = false
+                    continue
+                }
+                let headerParts = line.components(separatedBy: ": ")
+                if headerParts.count == 2, headerParts[0].lowercased() == "content-length" {
+                    contentLength = Int(headerParts[1]) ?? 0
+                }
+            }
+        }
+
+        // 提取请求体（位于空行之后）
+        if contentLength > 0, let bodyStart = requestStr.range(of: "\r\n\r\n") {
+            let bodyString = String(requestStr[bodyStart.upperBound...])
+            if let data = bodyString.data(using: .utf8), data.count >= contentLength {
+                bodyData = data
+            }
+        }
+
+        // 使用信号量同步等待 URLSession 结果
+        var resultData: Data?
+        let semaphore = DispatchSemaphore(value: 0)
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.httpBody = bodyData
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
+        request.timeoutInterval = 30
+
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let httpResponse = response as? HTTPURLResponse {
+                // 构建代理响应（保留原始状态码和内容）
+                let body = data ?? Data()
+                let statusCode = httpResponse.statusCode
+                let statusText = statusCode == 200 ? "OK" : (statusCode == 404 ? "Not Found" : "Error")
+                let header = "HTTP/1.1 \(statusCode) \(statusText)\r\n" +
+                    "Content-Type: \(httpResponse.mimeType ?? "application/json"); charset=utf-8\r\n" +
+                    "Content-Length: \(body.count)\r\n" +
+                    "Access-Control-Allow-Origin: *\r\n" +
+                    "Cache-Control: no-store\r\n" +
+                    "Connection: close\r\n\r\n"
+                resultData = Data(header.utf8) + body
+            } else {
+                resultData = Self.errorResponse(statusCode: 502, message: "Agent Core proxy failed: \(error?.localizedDescription ?? "unknown")")
+            }
+            semaphore.signal()
+        }
+        task.resume()
+        semaphore.wait()
+
+        return resultData ?? Self.errorResponse(statusCode: 502, message: "Agent Core proxy failed")
     }
 
     // MARK: - WebSocket Server

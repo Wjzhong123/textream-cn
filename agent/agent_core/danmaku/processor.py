@@ -19,6 +19,12 @@ from .responder import DanmakuResponder, ResponseStyle
 
 logger = logging.getLogger(__name__)
 
+# 被导入时自动注入 error_bus（如果可用）
+try:
+    from agent_core.error_bus import error_bus
+except ImportError:
+    error_bus = None
+
 
 class DanmakuProcessor:
     """
@@ -150,6 +156,8 @@ class DanmakuProcessor:
         if not available:
             # DirectorServer 不可达，尝试自动启动 Textream.app
             logger.info("[DanmakuProcessor] DirectorServer 不可达，尝试自动启动 Textream.app...")
+            if error_bus:
+                error_bus.report("danmaku", "warn", "DirectorServer 不可达，尝试自动启动 Textream.app")
             started = await self._launch_textream_app()
             if started:
                 # 等待 DirectorServer HTTP 就绪
@@ -190,6 +198,8 @@ class DanmakuProcessor:
         await self.launch()
 
         if not self.capture.bbox:
+            if error_bus:
+                error_bus.report("danmaku", "error", "启动失败：未设置截图区域")
             raise ValueError("请先设置截图区域 (set_region)")
 
         self.running = True
@@ -247,6 +257,8 @@ class DanmakuProcessor:
 
         except Exception as e:
             logger.error(f"[DanmakuProcessor] 处理失败: {e}")
+            if error_bus:
+                error_bus.report("llm", "error", f"弹幕处理失败: {e}", {"text": text[:50]})
 
     async def _save_interaction(self, text: str):
         """

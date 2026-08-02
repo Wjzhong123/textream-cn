@@ -104,7 +104,7 @@ export function RegionSelector({ onRegionSelected }: RegionSelectorProps) {
       {!isSelecting && (
         <button
           onClick={startSelection}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+          className="px-4 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-full border border-border-subtle transition-all duration-150"
         >
           📐 选择截图区域
         </button>
@@ -112,11 +112,10 @@ export function RegionSelector({ onRegionSelected }: RegionSelectorProps) {
 
       {/* Overlay for selection */}
       {isSelecting && (
-        <div className="fixed inset-0 z-50 bg-blue-500/10">
-          <div className="absolute inset-0 border-4 border-blue-500" />
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg">
-            <p className="text-sm font-medium">拖动鼠标选择弹幕区域</p>
-            <p className="text-xs mt-1 opacity-90">按 ESC 取消</p>
+        <div className="fixed inset-0 z-50 bg-accent/10">
+          <div className="absolute inset-0 border-2 border-accent/50" />
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-accent/20 backdrop-blur-md text-accent px-4 py-2 rounded-full border border-accent/30 shadow-lg">
+            <p className="text-xs font-medium">拖动鼠标选择弹幕区域 · 按 ESC 取消</p>
           </div>
           <div
             ref={overlayRef}
@@ -129,16 +128,15 @@ export function RegionSelector({ onRegionSelected }: RegionSelectorProps) {
       {/* Region preview */}
       {region && !isSelecting && (
         <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <p className="text-sm font-medium mb-2">已选择区域</p>
-          <div className="flex gap-4 text-xs text-gray-600 dark:text-gray-400">
-            <span>X: {Math.round(region.x)}px</span>
-            <span>Y: {Math.round(region.y)}px</span>
-            <span>宽: {Math.round(region.width)}px</span>
-            <span>高: {Math.round(region.height)}px</span>
+          <p className="text-xs font-medium text-text-primary mb-2">已选择区域</p>
+          <div className="flex gap-4 text-[11px] text-text-muted font-mono">
+            <span>X: {Math.round(region.x)}</span>
+            <span>Y: {Math.round(region.y)}</span>
+            <span>{Math.round(region.width)}×{Math.round(region.height)}</span>
           </div>
-          <div className="mt-2 h-2 bg-gray-200 dark:bg-gray-700 rounded overflow-hidden relative">
+          <div className="mt-2 h-1.5 bg-white/5 rounded-full overflow-hidden relative">
             <div
-              className="absolute h-full bg-blue-500/50 border-r border-blue-500"
+              className="absolute h-full bg-accent/40 rounded-full"
               style={{
                 left: `${(region.x / 1126) * 100}%`,
                 width: `${(region.width / 1126) * 100}%`,
@@ -147,7 +145,7 @@ export function RegionSelector({ onRegionSelected }: RegionSelectorProps) {
           </div>
           <button
             onClick={cancelSelection}
-            className="mt-2 text-xs text-red-500 hover:text-red-600"
+            className="mt-2 text-[11px] text-danger hover:text-danger/80 transition"
           >
             清除区域
           </button>
