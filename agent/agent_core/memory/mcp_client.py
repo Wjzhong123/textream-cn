@@ -10,6 +10,7 @@ import json
 import logging
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import time
@@ -253,6 +254,75 @@ class MCPClient:
                 pass
         return {"id": "?", "title": title, "status": "stored"}
 
+    @staticmethod
+    def _parse_query_response(text: str) -> list[dict[str, Any]]:
+        """
+        解析 MCP memory_query 返回的格式化文本为结构化列表。
+
+        MCP 服务器返回格式：
+            [1] 标题
+                重要性: 3/10  |  评分: 0.40
+                摘要: 摘要文本
+                标签: #tag1 #tag2
+
+            [2] 标题
+                ...
+        """
+        if not text or text.strip() == "[]":
+            return []
+
+        # 先尝试 JSON 解析（兼容性）
+        text = text.strip()
+        if text.startswith("["):
+            try:
+                return json.loads(text)
+            except json.JSONDecodeError:
+                pass
+
+        results = []
+        # 按空行分割条目
+        entries = re.split(r'\n\s*\n', text)
+        for entry in entries:
+            entry = entry.strip()
+            if not entry:
+                continue
+
+            item: dict[str, Any] = {
+                "id": "", "title": "", "summary": "",
+                "importance": 3, "score": 0.0, "tags": [],
+            }
+
+            # 第一行: [N] Title
+            lines = entry.split('\n')
+            header = lines[0].strip()
+            m = re.match(r'\[\d+\]\s*(.*)', header)
+            if m:
+                item["title"] = m.group(1).strip()
+
+            # 后续行: 键: 值
+            for line in lines[1:]:
+                line = line.strip()
+                if line.startswith("重要性:"):
+                    m = re.search(r'(\d+)/10', line)
+                    if m:
+                        item["importance"] = int(m.group(1))
+                    m = re.search(r'评分:\s*([\d.]+)', line)
+                    if m:
+                        item["score"] = float(m.group(1))
+                elif line.startswith("摘要:"):
+                    item["summary"] = line[len("摘要:"):].strip()
+                elif line.startswith("标签:"):
+                    tags_str = line[len("标签:"):].strip()
+                    item["tags"] = [t.strip().lstrip("#") for t in tags_str.split() if t.strip()]
+
+            # 如果只有标题没有摘要，用标题当摘要
+            if not item["summary"] and item["title"]:
+                item["summary"] = item["title"]
+
+            results.append(item)
+
+        return results
+
     async def query(
         self,
         query_text: str,
@@ -272,14 +342,11 @@ class MCPClient:
             "name": "memory_query",
             "arguments": params,
         })
-        # result.content[0].text 包含 JSON 字符串
+        # result.content[0].text 包含 MCP 格式化文本
         content = result.get("content", [])
         if content:
             text = content[0].get("text", "[]")
-            try:
-                return json.loads(text)
-            except json.JSONDecodeError:
-                return []
+            return self._parse_query_response(text)
         return []
 
     async def dream(self, dry_run: bool = False) -> dict[str, Any]:
@@ -444,10 +511,7 @@ class SyncMCPClient:
         content = result.get("content", [])
         if content:
             text = content[0].get("text", "[]")
-            try:
-                return json.loads(text)
-            except json.JSONDecodeError:
-                return []
+            return MCPClient._parse_query_response(text)
         return []
 
 

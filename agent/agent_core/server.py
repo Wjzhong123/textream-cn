@@ -412,7 +412,7 @@ def create_app() -> FastAPI:
                     context_parts.append(f"- [{ts}] {m.get('title', '')}: {content[:200]}")
 
         if use_knowledge:
-            knowledge_results = knowledge_mgr.search(message)
+            knowledge_results = await knowledge_mgr.search(message)
             if knowledge_results:
                 context_parts.append("\n## 知识库检索结果")
                 for k in knowledge_results[:3]:

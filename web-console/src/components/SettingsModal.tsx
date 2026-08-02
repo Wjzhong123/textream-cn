@@ -15,6 +15,10 @@ interface SettingsModalProps {
   config: ServerConfig;
   onSave: (config: ServerConfig) => void;
   onClose: () => void;
+  theme: string;
+  fontSize: string;
+  onThemeChange: (t: 'dark' | 'light') => void;
+  onFontSizeChange: (s: 'small' | 'medium' | 'large') => void;
 }
 
 const LLM_PROVIDERS: Record<string, { name: string; baseUrl: string; defaultModel: string; hint: string }> = {
@@ -25,7 +29,7 @@ const LLM_PROVIDERS: Record<string, { name: string; baseUrl: string; defaultMode
   none: { name: '不使用', baseUrl: '', defaultModel: '', hint: '降级到模板模式' },
 };
 
-export function SettingsModal({ config, onSave, onClose }: SettingsModalProps) {
+export function SettingsModal({ config, onSave, onClose, theme, fontSize, onThemeChange, onFontSizeChange }: SettingsModalProps) {
   const [formData, setFormData] = useState<ServerConfig>(config);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
@@ -218,6 +222,59 @@ export function SettingsModal({ config, onSave, onClose }: SettingsModalProps) {
                   </div>
                 </>
               )}
+            </div>
+          </section>
+
+          {/* 显示设置 */}
+          <section>
+            <h3 className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">🎨 显示设置</h3>
+            <div className="space-y-3">
+              {/* 主题切换 */}
+              <div>
+                <label className="block text-xs text-text-muted mb-1.5">主题模式</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => onThemeChange('dark')}
+                    className={`flex-1 px-4 py-2 text-xs rounded-full transition-all ${
+                      theme === 'dark'
+                        ? 'bg-accent/15 text-accent border border-accent/25'
+                        : 'text-text-secondary border border-border-subtle hover:bg-white/5'
+                    }`}
+                  >
+                    ☾ 夜间模式
+                  </button>
+                  <button
+                    onClick={() => onThemeChange('light')}
+                    className={`flex-1 px-4 py-2 text-xs rounded-full transition-all ${
+                      theme === 'light'
+                        ? 'bg-accent/15 text-accent border border-accent/25'
+                        : 'text-text-secondary border border-border-subtle hover:bg-white/5'
+                    }`}
+                  >
+                    ☀ 白天模式
+                  </button>
+                </div>
+              </div>
+
+              {/* 字体大小 */}
+              <div>
+                <label className="block text-xs text-text-muted mb-1.5">字体大小</label>
+                <div className="flex gap-2">
+                  {(['small', 'medium', 'large'] as const).map((size) => (
+                    <button
+                      key={size}
+                      onClick={() => onFontSizeChange(size)}
+                      className={`flex-1 px-4 py-2 text-xs rounded-full transition-all ${
+                        fontSize === size
+                          ? 'bg-accent/15 text-accent border border-accent/25'
+                          : 'text-text-secondary border border-border-subtle hover:bg-white/5'
+                      }`}
+                    >
+                      {size === 'small' ? '小' : size === 'medium' ? '中' : '大'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
         </div>

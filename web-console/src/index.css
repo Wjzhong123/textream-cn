@@ -31,59 +31,79 @@
   --font-mono: "SF Mono", "JetBrains Mono", ui-monospace, monospace;
 }
 
+/* ── 浅色主题 ── */
+[data-theme="light"] {
+  --color-bg-primary: #f5f5f7;
+  --color-bg-secondary: #ffffff;
+  --color-bg-glass: rgba(0, 0, 0, 0.03);
+  --color-bg-glass-hover: rgba(0, 0, 0, 0.06);
+  --color-bg-glass-active: rgba(192, 132, 252, 0.1);
+
+  --color-border-subtle: rgba(0, 0, 0, 0.08);
+  --color-border-accent: rgba(192, 132, 252, 0.3);
+
+  --color-text-primary: #1d1d1f;
+  --color-text-secondary: #6e6e73;
+  --color-text-muted: #aeaeb2;
+
+  --color-accent: #9333ea;
+  --color-accent-bg: rgba(147, 51, 234, 0.1);
+  --color-accent-glow: rgba(147, 51, 234, 0.15);
+
+  --color-danger: #dc2626;
+  --color-danger-bg: rgba(220, 38, 38, 0.1);
+  --color-success: #16a34a;
+  --color-success-bg: rgba(22, 163, 74, 0.1);
+  --color-warning: #d97706;
+  --color-warning-bg: rgba(217, 119, 6, 0.1);
+}
+
+[data-theme="light"] .status-dot-online {
+  box-shadow: 0 0 6px rgba(22, 163, 74, 0.4);
+}
+
+[data-theme="light"] .modal-content {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15), 0 0 40px rgba(147, 51, 234, 0.05);
+}
+
+/* ── 字体缩放 ── */
+[data-font-size="small"]   { --font-scale: 0.875; }
+[data-font-size="medium"]  { --font-scale: 1; }
+[data-font-size="large"]   { --font-scale: 1.125; }
+
+body {
+  font-size: calc(14px * var(--font-scale, 1));
+}
+
 /* ── 全局基础 ── */
 @layer base {
   :root {
     color-scheme: dark;
+    --font-scale: 1;
   }
+  [data-theme="light"] { color-scheme: light; }
 
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255,255,255,0.1) transparent;
-  }
-
-  *::-webkit-scrollbar {
-    width: 4px;
-  }
-
-  *::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  *::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.1);
-    border-radius: 99px;
-  }
+  * { scrollbar-width: thin; }
+  *::-webkit-scrollbar { width: 4px; }
+  *::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.3); border-radius: 99px; }
 
   body {
     font-family: var(--font-sans);
     background: var(--color-bg-primary);
     color: var(--color-text-primary);
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     overflow: hidden;
     user-select: none;
   }
 
-  /* 可选中文本区域 */
-  .selectable-text {
-    user-select: text;
-  }
+  .selectable-text { user-select: text; }
 }
 
-/* ── 玻璃质感工具类 ── */
+/* ── 玻璃质感 ── */
 @utility glass {
   background: var(--color-bg-glass);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--color-border-subtle);
-}
-
-@utility glass-hover {
-  background: var(--color-bg-glass-hover);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--color-border-accent);
 }
 
 @utility glass-card {
@@ -99,25 +119,7 @@
   box-shadow: 0 0 20px rgba(192, 132, 252, 0.08);
 }
 
-/* ── 胶囊按钮 ── */
-@utility pill {
-  border-radius: 999px;
-  transition: all 0.15s ease;
-}
-
-@utility pill-active {
-  background: var(--color-accent-bg);
-  color: var(--color-accent);
-  border: 1px solid var(--color-border-accent);
-  box-shadow: 0 0 16px rgba(192, 132, 252, 0.12);
-}
-
-@utility pill-inactive {
-  background: transparent;
-  color: var(--color-text-secondary);
-  border: 1px solid transparent;
-}
-
+/* ── 按钮 ── */
 @utility btn-accent {
   background: var(--color-accent-bg);
   color: var(--color-accent);
@@ -133,9 +135,9 @@
 
 /* ── 状态指示器 ── */
 @utility status-dot {
-  @apply inline-block rounded-full;
-  width: 6px;
-  height: 6px;
+  display: inline-block;
+  border-radius: 50%;
+  width: 6px; height: 6px;
   transition: all 0.3s ease;
 }
 
@@ -150,44 +152,6 @@
   50% { opacity: 0.5; }
 }
 
-/* ── 弹幕列表项 ── */
-@utility danmaku-item {
-  @apply glass-card;
-  padding: 8px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-@utility danmaku-item-hover {
-  background: var(--color-bg-glass-hover);
-  border-color: var(--color-border-accent);
-}
-
-/* ── 错误面板 ── */
-@utility error-item {
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-@utility error-error {
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
-  border: 1px solid rgba(248, 113, 113, 0.2);
-}
-
-@utility error-warn {
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-  border: 1px solid rgba(251, 191, 36, 0.2);
-}
-
 /* ── 输入框 ── */
 @utility input-glass {
   background: var(--color-bg-glass);
@@ -200,13 +164,11 @@
   transition: all 0.15s ease;
   width: 100%;
 }
-
 @utility input-glass-focus {
   border-color: var(--color-border-accent);
   box-shadow: 0 0 12px rgba(192, 132, 252, 0.1);
 }
 
-/* ── 选择框 ── */
 @utility select-glass {
   @apply input-glass;
   appearance: none;
@@ -217,9 +179,7 @@
 @utility modal-overlay {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
-
 @utility modal-content {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-subtle);
@@ -227,21 +187,55 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(192, 132, 252, 0.05);
 }
 
-/* ── 入口动画 ── */
+/* ── 分割线（可拖动） ── */
+.divider {
+  position: relative;
+  flex-shrink: 0;
+  cursor: col-resize;
+  z-index: 10;
+  width: 8px !important;
+  margin-left: -2px;
+  margin-right: -2px;
+  touch-action: none;
+}
+.divider::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: 2px;
+  transition: background 0.15s, width 0.15s;
+  touch-action: none;
+}
+.divider:hover::after {
+  background: var(--color-accent);
+  opacity: 0.4;
+}
+.divider::before {
+  content: '⋮';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  color: var(--color-text-muted);
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+.divider:hover::before {
+  opacity: 0.6;
+}
+
+/* ── 动画 ── */
 @utility fade-in {
   animation: fadeIn 0.2s ease-out;
 }
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@utility slide-in {
-  animation: slideIn 0.2s ease-out;
-}
-
-@keyframes slideIn {
-  from { opacity: 0; transform: translateX(8px); }
-  to { opacity: 1; transform: translateX(0); }
+/* ── 拖拽时禁用过渡动画 ── */
+.no-transition {
+  transition: none !important;
 }

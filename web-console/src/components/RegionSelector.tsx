@@ -23,7 +23,7 @@ interface RegionSelectorProps {
  */
 export function RegionSelector({ onRegionSelected }: RegionSelectorProps) {
   const { setCaptureRegion } = useAppStore();
-  const [isSelecting, setIsSelecting] = useState(false);
+  const [isSelecting, setIsSelecting] = useState(true);  // 改为默认选中
   const [region, setRegionState] = useState<Region | null>(null);
   const [startPoint, setStartPoint] = useState<Point | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);

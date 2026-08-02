@@ -1,62 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useAppStore } from '../stores/appStore';
-import { ScreenshotTool } from './ScreenshotTool';
 import { api } from '../utils/api';
 
-interface ErrorEntry {
-  time: number;
-  module: string;
-  level: string;
-  message: string;
-}
-
-function timeAgo(ts: number): string {
-  const seconds = Math.floor((Date.now() - ts) / 1000);
-  if (seconds < 60) return `${seconds}秒前`;
-  const mins = Math.floor(seconds / 60);
-  return `${mins}分钟前`;
-}
-
-function formatErrorTime(unixTs: number): string {
-  const d = new Date(unixTs * 1000);
-  const hh = d.getHours().toString().padStart(2, '0');
-  const mm = d.getMinutes().toString().padStart(2, '0');
-  const ss = d.getSeconds().toString().padStart(2, '0');
-  return `${hh}:${mm}:${ss}`;
-}
-
 export function DanmakuPanel() {
-  const { danmaku, isCapturing, setIsCapturing, addResponse, selectedLevel, captureRegion } = useAppStore();
-  const { connect, disconnect, isConnected } = useWebSocket();
-  const [loading, setLoading] = useState(false);
+  const { danmaku, isCapturing, setIsCapturing, addResponse, selectedLevel, captureRegion, responses } = useAppStore();
+  const { connect, disconnect } = useWebSocket();
+  const [loading, setLoading] = useState<string | null>(null);
   const [selectorLoading, setSelectorLoading] = useState(false);
-  const [errorPanelOpen, setErrorPanelOpen] = useState(true);
-  const [errors, setErrors] = useState<ErrorEntry[]>([]);
-  const errorsRef = useRef(errors);
-  errorsRef.current = errors;
-
-  // 轮询错误总线（每 3 秒）
-  useEffect(() => {
-    const config = JSON.parse(localStorage.getItem('textream_config') || '{}');
-    const baseUrl = config.url || 'http://localhost:9123';
-
-    const fetchErrors = async () => {
-      try {
-        const res = await fetch(`${baseUrl}/api/errors`);
-        const data = await res.json();
-        if (data.errors && Array.isArray(data.errors)) {
-          setErrors(data.errors as ErrorEntry[]);
-        }
-      } catch {
-        // 后端离线时不更新
-      }
-    };
-
-    fetchErrors();
-    const interval = setInterval(fetchErrors, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleStartCapture = async () => {
     try {
@@ -76,8 +27,8 @@ export function DanmakuPanel() {
     } catch { /* ignore */ }
   };
 
-  const handleGenerateResponse = async (danmakuText: string) => {
-    setLoading(true);
+  const handleGenerateResponse = async (danmakuId: string, danmakuText: string) => {
+    setLoading(danmakuId);
     try {
       const response = await api.generateResponse(danmakuText, selectedLevel);
       addResponse({
@@ -91,32 +42,20 @@ export function DanmakuPanel() {
     } catch {
       console.error('Failed to generate response');
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
 
   return (
     <div className="flex flex-col h-full">
-      {/* ── 标题栏 ── */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
-        <h2 className="text-sm font-semibold text-text-primary">弹幕监控</h2>
-        <div className="flex items-center gap-2.5">
-          {isCapturing && (
-            <div className="flex items-center gap-1.5">
-              <span className="status-dot status-dot-online" />
-              <span className="text-xs text-text-muted">直播中 · {danmaku.length} 条</span>
-            </div>
-          )}
-          {captureRegion && (
-            <span className="text-[11px] text-text-muted font-mono">
-              {Math.round(captureRegion.width)}×{Math.round(captureRegion.height)}
-            </span>
-          )}
+      {/* ── 紧凑标题栏 ── */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border-subtle">
+        <h2 className="text-sm font-semibold text-text-primary shrink-0">弹幕监控</h2>
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className={`status-dot ${isCapturing ? 'status-dot-online' : 'bg-text-muted'}`} />
+          <span className="text-text-muted">{isCapturing ? '捕获中' : '未捕获'}</span>
         </div>
-      </div>
-
-      {/* ── 控制栏 ── */}
-      <div className="flex items-center gap-2 px-5 py-3 border-b border-border-subtle">
+        <div className="flex-1" />
         {!isCapturing && (
           <>
             <button
@@ -127,100 +66,87 @@ export function DanmakuPanel() {
                   if (res.data.status === 'ok' && res.data.region) {
                     useAppStore.getState().setCaptureRegion(res.data.region);
                   }
-                } catch {
-                  console.error('Selector failed');
+                } catch (err) {
+                  console.error('CaptiOCR selector failed:', err);
                 } finally {
                   setSelectorLoading(false);
                 }
               }}
               disabled={selectorLoading}
-              className="flex items-center gap-2 px-4 py-2 text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 rounded-full border border-border-subtle transition-all duration-150 disabled:opacity-50"
+              className="px-3 py-1.5 text-xs btn-accent hover:btn-accent-hover disabled:opacity-50 shrink-0"
+              title="选择弹幕截图区域"
             >
-              {selectorLoading ? '⏳' : '📐'} 选择区域
+              {selectorLoading ? '⏳' : '📐 区域'}
             </button>
-            <ScreenshotTool onCapture={() => {}} />
-          </>
-        )}
-
-        <div className="ml-auto">
-          {!isCapturing ? (
             <button
               onClick={handleStartCapture}
               disabled={!captureRegion}
-              className="btn-accent px-5 py-2 text-xs disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 text-xs btn-accent hover:btn-accent-hover disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
             >
-              ▶ 开始捕获
+              ▶ 开始
             </button>
-          ) : (
-            <button
-              onClick={handleStopCapture}
-              className="flex items-center gap-2 px-5 py-2 text-xs text-danger bg-danger-bg rounded-full border border-danger/20 hover:bg-danger/20 transition-all duration-150"
-            >
-              ⏹ 停止捕获
-            </button>
-          )}
-        </div>
+          </>
+        )}
+        {isCapturing && (
+          <button
+            onClick={handleStopCapture}
+            className="px-3 py-1.5 text-xs text-danger bg-danger-bg rounded-full border border-danger/20 hover:bg-danger/20 shrink-0"
+          >
+            ⏹ 停止
+          </button>
+        )}
+        {captureRegion && (
+          <span className="text-[10px] text-text-muted font-mono shrink-0">
+            {Math.round(captureRegion.width)}×{Math.round(captureRegion.height)}
+          </span>
+        )}
+        {captureRegion && !isCapturing && (
+          <button
+            onClick={() => useAppStore.getState().setCaptureRegion(null)}
+            className="text-[10px] text-text-muted hover:text-danger shrink-0"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {/* ── 弹幕列表 ── */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-1.5">
+      <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
         {danmaku.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-text-muted">
             <p className="text-sm mb-1">暂无弹幕</p>
-            <p className="text-xs">选择截图区域 → 点击开始捕获</p>
+            <p className="text-xs">📐 选择区域 → ▶ 开始捕获</p>
           </div>
         ) : (
           danmaku.map((item) => (
             <div
               key={item.id}
-              className="danmaku-item group hover:danmaku-item-hover fade-in"
+              className="glass-card px-3 py-2 hover:glass-card-hover transition"
             >
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <span className="text-[11px] text-text-muted shrink-0 font-mono">
-                  {timeAgo(item.timestamp)}
+              <div className="flex items-start gap-2">
+                <span className="text-[10px] text-text-muted mt-0.5 shrink-0">
+                  {new Date(item.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
-                <span className="text-xs text-text-secondary truncate selectable-text">
-                  {item.text}
-                </span>
+                <p className="text-xs text-text-primary flex-1 leading-relaxed selectable-text">{item.text}</p>
+                <button
+                  onClick={() => handleGenerateResponse(item.id, item.text)}
+                  disabled={loading === item.id}
+                  className="px-2 py-1 text-[11px] btn-accent hover:btn-accent-hover disabled:opacity-50 shrink-0 rounded-full"
+                  title="生成回复话术"
+                >
+                  {loading === item.id ? '⏳' : '💬'}
+                </button>
               </div>
-              <button
-                onClick={() => handleGenerateResponse(item.text)}
-                disabled={loading}
-                className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-xs text-text-muted hover:text-accent hover:bg-accent/10 transition-all duration-150 opacity-0 group-hover:opacity-100 disabled:opacity-30"
-                title="生成回复"
-              >
-                💬
-              </button>
+              {/* 已生成的回复 */}
+              {responses.filter(r => r.danmaku === item.text).slice(-1).map(r => (
+                <div key={r.id} className="mt-1.5 ml-8 pl-3 border-l-2 border-accent/30">
+                  <p className="text-xs text-accent leading-relaxed">{r.text}</p>
+                </div>
+              ))}
             </div>
           ))
         )}
       </div>
-
-      {/* ── 错误面板 ── */}
-      {errors.length > 0 && (
-        <div className="border-t border-border-subtle">
-          <button
-            onClick={() => setErrorPanelOpen(!errorPanelOpen)}
-            className="flex items-center justify-between w-full px-5 py-2.5 text-xs text-text-muted hover:text-text-secondary transition"
-          >
-            <span>错误面板 ({errors.length})</span>
-            <span className={`transform transition-transform ${errorPanelOpen ? 'rotate-180' : ''}`}>
-              ▼
-            </span>
-          </button>
-          {errorPanelOpen && (
-            <div className="px-4 pb-3 space-y-1 max-h-[140px] overflow-y-auto">
-              {errors.map((err, i) => (
-                <div key={i} className={`error-item ${err.level === 'error' ? 'error-error' : 'error-warn'}`}>
-                  <span>{err.level === 'error' ? '✕' : '⚠'}</span>
-                  <span className="truncate">{err.module}: {err.message}</span>
-                  <span className="ml-auto shrink-0 text-[10px] opacity-60">{formatErrorTime(err.time)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
