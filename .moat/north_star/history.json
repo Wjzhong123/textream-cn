@@ -1,0 +1,11 @@
+[
+  {
+    "version": "v1.0.0-20260803",
+    "confirmed_at": "2026-08-03T10:13:57.418261",
+    "metrics": {
+      "compliance_rate": 0,
+      "critical_hubs": 0,
+      "warning_hubs": 0
+    }
+  }
+]

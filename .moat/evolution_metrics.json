@@ -520,5 +520,193 @@
       "failed": 0
     },
     "is_positive": true
+  },
+  {
+    "id": "refactor_1785721960566",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785721960.5661461,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785722287070",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785722287.070553,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785722611037",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785722611.0370162,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785722964052",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785722964.052865,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 66.66666666666667,
+      "source": "moat_check",
+      "total_checks": 6,
+      "passed": 2,
+      "failed": 3
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785722964055",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785722964.055678,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/server.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785722985132",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785722985.132595,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 66.66666666666667,
+      "source": "moat_check",
+      "total_checks": 6,
+      "passed": 2,
+      "failed": 3
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785722985135",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785722985.135676,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/server.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785723092022",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785723092.022251,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 1
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785723111438",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785723111.438957,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 1
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785723135654",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785723135.654054,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 25.0,
+      "source": "moat_check",
+      "total_checks": 4,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785723260615",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785723260.615114,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 25.0,
+      "source": "moat_check",
+      "total_checks": 4,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
   }
 ]

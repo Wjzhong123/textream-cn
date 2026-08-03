@@ -21,7 +21,7 @@ agent_dir = Path(__file__).parent.parent
 if str(agent_dir) not in sys.path:
     sys.path.insert(0, str(agent_dir))
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi.staticfiles import StaticFiles
@@ -195,6 +195,24 @@ def _extract_file_text(filename: str, content: bytes) -> str | None:
     return None
 
 
+def require_api_key(authorization: str | None = Header(default=None)):
+    """API 鉴权依赖：默认放行（本地应用）；设置 TEXTREAM_API_KEY 后强制校验 Bearer token。
+
+    设计说明：Textream 是本地桌面应用，前端直连 localhost。
+    默认无密钥时保持零配置可用；设置 TEXTREAM_API_KEY 后所有路由
+    要求 Authorization: Bearer <key>，用于局域网/公网部署场景。
+    """
+    expected = os.environ.get("TEXTREAM_API_KEY", "").strip()
+    if not expected:
+        return {"authenticated": True, "source": "open"}
+    if authorization and authorization.startswith("Bearer ") and authorization[7:].strip() == expected:
+        return {"authenticated": True, "source": "api_key"}
+    raise HTTPException(
+        status_code=401,
+        detail="Invalid or missing API key",
+    )
+
+
 def create_app() -> FastAPI:
     app = FastAPI(
         title="Textream Agent Core",
@@ -213,7 +231,7 @@ def create_app() -> FastAPI:
 
     # ── Health ─────────────────────────────────────────────────────────────
     @app.get("/api/health")
-    async def health():
+    async def health(_auth: dict = Depends(require_api_key)):
         return {
             "status": "ok",
             "version": "2.0.0-alpha",
@@ -222,7 +240,7 @@ def create_app() -> FastAPI:
 
     # ── Status ─────────────────────────────────────────────────────────────
     @app.get("/api/status")
-    async def status():
+    async def status(_auth: dict = Depends(require_api_key)):
         if not memory_mgr or not knowledge_mgr:
             return {"agent": "initializing", "version": "2.0.0-alpha"}
 
@@ -258,7 +276,7 @@ def create_app() -> FastAPI:
         return ai_memory_mgr or memory_mgr
 
     @app.get("/api/memory/list")
-    async def list_memories(limit: int = 50, offset: int = 0, user_id: str = "default", tag: str | None = None):
+    async def list_memories(limit: int = 50, offset: int = 0, user_id: str = "default", tag: str | None = None, _auth: dict = Depends(require_api_key)):
         mgr = _get_active_memory()
         if not mgr:
             return {"total": 0, "offset": offset, "limit": limit, "items": []}
@@ -269,7 +287,7 @@ def create_app() -> FastAPI:
         return {"total": len(items), "offset": offset, "limit": limit, "items": items}
 
     @app.post("/api/memory/add")
-    async def add_memory(entry: dict):
+    async def add_memory(entry: dict, _auth: dict = Depends(require_api_key)):
         """添加记忆（支持 JSON body）"""
         mgr = _get_active_memory()
         if not mgr:
@@ -286,7 +304,7 @@ def create_app() -> FastAPI:
         return {"status": "ok", "id": result.get("id", "?")}
 
     @app.delete("/api/memory/delete/{memory_id}")
-    async def delete_memory(memory_id: str):
+    async def delete_memory(memory_id: str, _auth: dict = Depends(require_api_key)):
         mgr = _get_active_memory()
         if not mgr:
             raise __import__("fastapi").HTTPException(status_code=503, detail="Memory not available")
@@ -299,7 +317,7 @@ def create_app() -> FastAPI:
         raise __import__("fastapi").HTTPException(status_code=404, detail="Memory not found")
 
     @app.get("/api/memory/search")
-    async def search_memory(q: str, limit: int = 20, user_id: str = "default"):
+    async def search_memory(q: str, limit: int = 20, user_id: str = "default", _auth: dict = Depends(require_api_key)):
         mgr = _get_active_memory()
         if not mgr:
             return {"query": q, "items": []}
@@ -312,7 +330,7 @@ def create_app() -> FastAPI:
         return {"query": q, "items": items}
 
     @app.get("/api/memory/persona")
-    async def get_persona(user_id: str = "default"):
+    async def api_get_persona(user_id: str = "default", _auth: dict = Depends(require_api_key)):
         """获取用户画像"""
         mgr = _get_active_memory()
         if not mgr:
@@ -322,7 +340,7 @@ def create_app() -> FastAPI:
         return mgr.get_persona(user_id)
 
     @app.get("/api/memory/error-book")
-    async def get_error_book(user_id: str = "default"):
+    async def api_get_error_book(user_id: str = "default", _auth: dict = Depends(require_api_key)):
         """获取错题本"""
         mgr = _get_active_memory()
         if not mgr:
@@ -335,20 +353,20 @@ def create_app() -> FastAPI:
 
     # ── Knowledge ───────────────────────────────────────────────────────────
     @app.get("/api/knowledge/list")
-    async def list_knowledge():
+    async def list_knowledge(_auth: dict = Depends(require_api_key)):
         if not knowledge_mgr:
             return {"items": []}
         items = await knowledge_mgr.list()
         return {"items": items}
 
     @app.get("/api/knowledge/search")
-    async def search_knowledge(q: str):
+    async def search_knowledge(q: str, _auth: dict = Depends(require_api_key)):
         if not knowledge_mgr:
             return {"query": q, "items": []}
         return {"query": q, "items": await knowledge_mgr.search(q)}
 
     @app.post("/api/knowledge/add")
-    async def add_knowledge(request: dict):
+    async def add_knowledge(request: dict, _auth: dict = Depends(require_api_key)):
         """添加知识库文档（支持 JSON body 或 form data）"""
         if not knowledge_mgr:
             raise __import__("fastapi").HTTPException(status_code=503, detail="Knowledge not available")
@@ -360,7 +378,7 @@ def create_app() -> FastAPI:
         return {"status": "ok", **result}
 
     @app.post("/api/knowledge/upload")
-    async def upload_knowledge(file: __import__("fastapi").UploadFile = __import__("fastapi").File(...)):
+    async def upload_knowledge(file: __import__("fastapi").UploadFile = __import__("fastapi").File(...), _auth: dict = Depends(require_api_key)):
         """上传知识库文档（支持 .txt .md .json .docx .doc）"""
         if not knowledge_mgr:
             raise __import__("fastapi").HTTPException(status_code=503, detail="Knowledge not available")
@@ -380,7 +398,7 @@ def create_app() -> FastAPI:
         return {"status": "ok", "filename": filename, **result}
 
     @app.delete("/api/knowledge/delete/{name}")
-    async def delete_knowledge(name: str):
+    async def delete_knowledge(name: str, _auth: dict = Depends(require_api_key)):
         if not knowledge_mgr:
             raise __import__("fastapi").HTTPException(status_code=503, detail="Knowledge not available")
         if knowledge_mgr.delete_file(name):
@@ -389,7 +407,7 @@ def create_app() -> FastAPI:
 
     # ── Chat ───────────────────────────────────────────────────────────────
     @app.post("/api/chat")
-    async def chat(request: dict):
+    async def chat(request: dict, _auth: dict = Depends(require_api_key)):
         """LLM 聊天（支持记忆 + 知识库增强）"""
         message = request.get("message", "")
         user_id = request.get("user_id", "default")
@@ -436,7 +454,7 @@ def create_app() -> FastAPI:
 
     # ── Danmaku ──────────────────────────────────────────────────────────────
     @app.get("/api/danmaku/status")
-    async def danmaku_status():
+    async def danmaku_status(_auth: dict = Depends(require_api_key)):
         """获取弹幕捕获状态"""
         if not danmaku_processor:
             return {"running": False, "region": None, "engine": None}
@@ -448,7 +466,7 @@ def create_app() -> FastAPI:
         }
 
     @app.post("/api/danmaku/start")
-    async def danmaku_start():
+    async def danmaku_start(_auth: dict = Depends(require_api_key)):
         """启动弹幕捕获"""
         if not danmaku_processor:
             raise __import__("fastapi").HTTPException(status_code=503, detail="Danmaku processor not available")
@@ -470,7 +488,7 @@ def create_app() -> FastAPI:
             raise __import__("fastapi").HTTPException(status_code=500, detail=str(e))
 
     @app.post("/api/danmaku/stop")
-    async def danmaku_stop():
+    async def danmaku_stop(_auth: dict = Depends(require_api_key)):
         """停止弹幕捕获"""
         if not danmaku_processor:
             return {"status": "not_running"}
@@ -478,7 +496,7 @@ def create_app() -> FastAPI:
         return {"status": "stopped"}
 
     @app.post("/api/danmaku/region")
-    async def danmaku_region(request: dict):
+    async def danmaku_region(request: dict, _auth: dict = Depends(require_api_key)):
         """设置截图区域（支持手动坐标 或 CaptiOCR 视觉框选）"""
         if not danmaku_processor:
             raise __import__("fastapi").HTTPException(status_code=503, detail="Danmaku processor not available")
@@ -492,7 +510,7 @@ def create_app() -> FastAPI:
         return {"status": "ok", "region": {"x": x, "y": y, "width": width, "height": height}}
 
     @app.post("/api/danmaku/selector")
-    async def danmaku_selector():
+    async def danmaku_selector(_auth: dict = Depends(require_api_key)):
         """
         打开 CaptiOCR 视觉区域选择器（tkinter 原生透明遮罩）。
         与当前捕获引擎无关，独立可用。
@@ -556,7 +574,7 @@ def create_app() -> FastAPI:
 
     # ── Model Settings ─────────────────────────────────────────────────────
     @app.get("/api/models/settings")
-    async def get_model_settings():
+    async def get_model_settings(_auth: dict = Depends(require_api_key)):
         """获取当前 LLM 配置"""
         if not llm_router:
             return {"provider": settings.llm_provider, "model": settings.llm_model}
@@ -570,7 +588,7 @@ def create_app() -> FastAPI:
         }
 
     @app.put("/api/models/settings")
-    async def update_model_settings(body: dict):
+    async def update_model_settings(body: dict, _auth: dict = Depends(require_api_key)):
         """更新 LLM 配置（运行时生效，自动持久化）"""
         if not llm_router:
             raise __import__("fastapi").HTTPException(status_code=503, detail="LLM Router not available")
@@ -590,7 +608,7 @@ def create_app() -> FastAPI:
         return {"status": "ok", "provider": provider, "model": model, "configured": bool(api_key)}
 
     @app.get("/api/models/providers")
-    async def get_model_providers():
+    async def get_model_providers(_auth: dict = Depends(require_api_key)):
         """返回所有支持的 LLM 提供商列表及其默认配置"""
         from agent_core.llm.router import DEFAULT_PROVIDERS
 
@@ -606,12 +624,12 @@ def create_app() -> FastAPI:
 
     # ── Error Bus ──────────────────────────────────────────────────────────
     @app.get("/api/errors")
-    async def get_errors(limit: int = 50, level: str | None = None):
+    async def get_errors(limit: int = 50, level: str | None = None, _auth: dict = Depends(require_api_key)):
         """获取错误总线中的错误列表"""
         return {"errors": error_bus.list(limit=limit, level=level), "total": error_bus.count}
 
     @app.post("/api/errors/clear")
-    async def clear_errors():
+    async def clear_errors(_auth: dict = Depends(require_api_key)):
         """清空错误总线"""
         error_bus.clear()
         return {"status": "cleared"}
