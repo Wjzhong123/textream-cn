@@ -63,6 +63,11 @@
       "description": "检测未使用的导出符号",
       "severity": "low",
       "auto_detect": true
+    },
+    "core_file_modification": {
+      "enabled": true,
+      "severity": "critical",
+      "core_files": []
     }
   },
   "auto_detect": {
@@ -95,14 +100,52 @@
   },
   "python": {
     "framework": "fastapi",
-    "entry_points": ["agent/run_agent_v2.py", "agent/agent_core/server.py"]
+    "entry_points": [
+      "agent/run_agent_v2.py",
+      "agent/agent_core/server.py"
+    ]
   },
   "typescript": {
     "framework": "react",
-    "entry_points": ["web-console/src/main.tsx", "web-console/src/index.css"]
+    "entry_points": [
+      "web-console/src/main.tsx",
+      "web-console/src/index.css"
+    ]
   },
   "test_paths": [
     "tests/moat/",
     "agent/agent_core/"
-  ]
+  ],
+  "adversarial_review": {
+    "model": "deepseek-v4-flash",
+    "base_url": "https://token.sensenova.cn/v1",
+    "enabled": true,
+    "pain_threshold": 75.0,
+    "review_depth": "standard",
+    "provider": "",
+    "max_tokens": 4000,
+    "timeout": 30,
+    "enable_security_auditor": true,
+    "enable_architect": true,
+    "enable_concurrency_devil": true
+  },
+  "env_isolation": {
+    "enabled": true,
+    "check_interpreter": true,
+    "check_dependency_drift": true,
+    "check_dangerous_commands": true,
+    "allowed_venv_names": [
+      ".venv",
+      "venv"
+    ],
+    "whitelist_packages": [
+      "moat"
+    ],
+    "scan_exclude": [
+      "node_modules",
+      ".git",
+      "dist",
+      "build"
+    ]
+  }
 }
