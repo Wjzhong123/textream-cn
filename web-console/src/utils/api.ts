@@ -61,6 +61,10 @@ class ApiClient {
     return this.client.post('/api/danmaku/selector');
   }
 
+  async setCaptureInterval(interval: number) {
+    return this.client.put('/api/danmaku/settings', { capture_interval: interval });
+  }
+
   // Response API
   async generateResponse(danmakuText: string, level: 'simple' | 'deep' | 'humorous') {
     return this.client.post('/api/chat', {

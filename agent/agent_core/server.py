@@ -693,6 +693,11 @@ def create_app() -> FastAPI:
         api_key = body.get("api_key", llm_router.api_key)
         model = body.get("model", llm_router.default_model)
 
+        # 保护：前端可能返回脱敏 "***" 或空字符串（sessionStorage 清空后重开页面），
+        # 此时不能覆盖后端已持久化的真实 key，否则 key 会"消失"。
+        if not api_key or api_key == "***":
+            api_key = llm_router.api_key
+
         llm_router.update_config(
             provider=provider,
             base_url=base_url,

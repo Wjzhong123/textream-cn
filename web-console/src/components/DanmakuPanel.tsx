@@ -4,10 +4,20 @@ import { useAppStore } from '../stores/appStore';
 import { api } from '../utils/api';
 
 export function DanmakuPanel() {
-  const { danmaku, isCapturing, setIsCapturing, addResponse, selectedLevel, captureRegion, responses } = useAppStore();
+  const { danmaku, isCapturing, setIsCapturing, addResponse, selectedLevel, captureRegion, responses, clearDanmaku } = useAppStore();
   const { connect, disconnect } = useWebSocket();
   const [loading, setLoading] = useState<string | null>(null);
   const [selectorLoading, setSelectorLoading] = useState(false);
+  const [captureInterval, setCaptureIntervalState] = useState(1.0);
+
+  const handleIntervalChange = async (interval: number) => {
+    setCaptureIntervalState(interval);
+    try {
+      await api.setCaptureInterval(interval);
+    } catch {
+      console.error('Failed to set capture interval');
+    }
+  };
 
   const handleStartCapture = async () => {
     try {
@@ -99,6 +109,29 @@ export function DanmakuPanel() {
           <span className="text-[10px] text-text-muted font-mono shrink-0">
             {Math.round(captureRegion.width)}×{Math.round(captureRegion.height)}
           </span>
+        )}
+        <div className="flex items-center gap-1 shrink-0" title="截图刷新频率">
+          <span className="text-[10px] text-text-muted">速度</span>
+          <select
+            value={captureInterval}
+            onChange={(e) => handleIntervalChange(Number(e.target.value))}
+            className="px-1 py-0.5 text-[10px] rounded border border-border-subtle bg-surface text-text-primary focus:outline-none"
+          >
+            <option value={0.25}>0.25s</option>
+            <option value={0.5}>0.5s</option>
+            <option value={1}>1s</option>
+            <option value={2}>2s</option>
+            <option value={3}>3s</option>
+          </select>
+        </div>
+        {danmaku.length > 0 && (
+          <button
+            onClick={clearDanmaku}
+            className="px-2 py-0.5 text-[10px] text-text-muted border border-border-subtle rounded hover:text-danger shrink-0"
+            title="清空弹幕列表"
+          >
+            清屏
+          </button>
         )}
         {captureRegion && !isCapturing && (
           <button

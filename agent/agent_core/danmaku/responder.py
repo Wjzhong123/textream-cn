@@ -15,6 +15,7 @@ import logging
 from typing import Any
 
 from ..llm.router import get_llm_router as get_llm
+from ..llm.prompts import build_system_prompt, build_user_message, STYLE_DESCRIPTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -172,48 +173,22 @@ class DanmakuResponder:
         try:
             llm = get_llm(self.llm_provider)
 
-            # 构建 prompt
-            style_desc = {
-                ResponseStyle.SIMPLE: "简洁有力（1-2 句话）",
-                ResponseStyle.DETAILED: "深度解析（3-5 句话）",
-                ResponseStyle.HUMOR: "幽默化解（轻松氛围）",
-            }
-
             knowledge = (context or {}).get("knowledge", [])
 
-            system_prompt = f"""你是一个专业的直播主持人和演讲者。现在有观众发了一条弹幕，请根据以下信息生成合适的回应：
+            system_prompt = build_system_prompt(
+                danmaku_text=danmaku_text,
+                style=style,
+                memories=memories,
+                knowledge=knowledge,
+                context=context,
+            )
 
-**弹幕内容**：{danmaku_text}
-
-**回应风格**：{style_desc.get(style, "简洁")}
-
-**相关记忆**（如果有）：
-{chr(10).join(f"- {m}" for m in memories) if memories else "（无相关记忆）"}
-
-**相关知识库**（如果有）：
-{chr(10).join(f"- {k}" for k in knowledge) if knowledge else "（无相关知识）"}
-
-**当前上下文**：
-{json.dumps(context, ensure_ascii=False) if context else "（无上下文）"}
-
-**要求**：
-1. 回应自然、亲切、专业
-2. 根据风格调整长度和语气
-3. 如果有相关记忆或知识库内容，可以适当引用
-4. 不要重复弹幕原文，直接给出回应"""
-
-            user_message = f"""弹幕内容：{danmaku_text}
-
-相关记忆：
-{chr(10).join(f"- {m}" for m in memories) if memories else "（无相关记忆）"}
-
-相关知识库：
-{chr(10).join(f"- {k}" for k in knowledge) if knowledge else "（无相关知识）"}
-
-当前上下文：
-{json.dumps(context, ensure_ascii=False) if context else "（无上下文）"}
-
-请生成回应："""
+            user_message = build_user_message(
+                danmaku_text=danmaku_text,
+                memories=memories,
+                knowledge=knowledge,
+                context=context,
+            )
 
             response = await llm.async_chat_with_system(user_message, system_prompt)
             return response.strip()

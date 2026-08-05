@@ -74,6 +74,12 @@ class DanmakuProcessor:
         self.running = False
         self.websocket_callback: Any = None
         self._launched = False
+        # 自动话术生成节流：防止弹幕密集时打爆 API 速率限制（429 rpm exhausted）。
+        # 自动生成的弹幕可能一帧识别出多条，每条都调 3 次 LLM，瞬间耗尽配额。
+        # 因此自动生成按"每 N 秒最多 1 条"限速，手动点击 💬 不受此限制。
+        self._auto_gen_interval = 5.0  # 秒
+        self._last_auto_gen = 0.0
+        self._llm_backoff_until = 0.0  # 429 退避时间戳
 
         logger.info("[DanmakuProcessor] 初始化完成")
 
@@ -239,8 +245,8 @@ class DanmakuProcessor:
 
         # 设置弹幕捕获回调：OCR 文本 → 前端推送 + AI 应答生成
         async def on_danmaku(texts: list[str]):
+            # 先全部推送到前端（不阻塞，确保实时性）
             for text in texts:
-                # 1) 推送到前端
                 if self.websocket_callback:
                     msg = {
                         "text": text,
@@ -250,8 +256,16 @@ class DanmakuProcessor:
                     await self.websocket_callback(msg)
                     logger.info(f"[DanmakuProcessor] 推送到前端: {text}")
 
-                # 2) 触发 AI 应答生成（3 档话术）
-                await self._process_single_danmaku(text)
+            # 再逐条触发 AI 应答生成（3 档话术，完全异步不阻塞）。
+            # 节流 + 429 退避：弹幕密集时不能每帧都调 LLM，否则 rpm 秒耗尽。
+            now = time.time()
+            if now < self._llm_backoff_until:
+                logger.info(f"[DanmakuProcessor] LLM 退避中（429 限流），跳过自动生成 {len(texts)} 条")
+                return
+            if now - self._last_auto_gen >= self._auto_gen_interval:
+                self._last_auto_gen = now
+                # 只取第一条（限速下处理最新一条即可，避免积压）
+                asyncio.create_task(self._process_single_danmaku(texts[0]))
 
         # CaptiOCR 需要设置事件循环才能从后台线程调度异步回调
         if hasattr(self.capture, 'set_loop'):
@@ -296,7 +310,13 @@ class DanmakuProcessor:
                 await asyncio.sleep(0.1)
 
         except Exception as e:
-            logger.error(f"[DanmakuProcessor] 处理失败: {e}")
+            # 429 = 速率限制。进入退避窗口，暂停自动生成，避免继续打爆配额。
+            err_str = str(e)
+            if "429" in err_str or "quota" in err_str.lower() or "rpm" in err_str.lower():
+                self._llm_backoff_until = time.time() + 60.0
+                logger.warning(f"[DanmakuProcessor] LLM 限流(429)，退避 60 秒: {err_str[:100]}")
+            else:
+                logger.error(f"[DanmakuProcessor] 处理失败: {e}")
             if error_bus:
                 error_bus.report("llm", "error", f"弹幕处理失败: {e}", {"text": text[:50]})
 

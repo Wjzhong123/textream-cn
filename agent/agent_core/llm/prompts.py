@@ -1,58 +1,109 @@
 """
-LLM Prompt 模板 - 专为提词器/直播场景设计
+提词器专用 Prompt 模板
+
+集中管理所有话术生成相关的 Prompt，方便调优和场景切换。
 """
 
-# 系统提示词：通用助手
-SYSTEM_ASSISTANT = """你是一个专业的直播/演讲 AI 军师助手。
-你的目标是帮助主播/演讲者应对观众提问、生成高情商回复、优化台词表达。
+# ── 风格描述 ──────────────────────────────────────────────────────────
 
-请遵守以下原则：
-1. 简洁有力：直播场景下，回复要简短、有力、易记
-2. 风格匹配：根据用户的人设和风格调整语气
-3. 事实准确：基于知识库内容回答，不确定时明确告知
-4. 积极正向：避免负面或争议性言论
-"""
+STYLE_DESCRIPTIONS = {
+    "simple": "简洁有力（1-2 句话）",
+    "detailed": "深度解析（3-5 句话）",
+    "humor": "幽默化解（轻松氛围）",
+}
 
-# 系统提示词：弹幕应答生成
-SYSTEM_DANMAKU_RESPONSE = """你是一个直播间弹幕应答专家。
-根据弹幕内容、用户风格和知识库，生成高情商的应对话术。
+# ── 话术生成 System Prompt ────────────────────────────────────────────
 
-输出格式：
-🎯 弹幕意图：[分类]
-💡 知识库关联：[相关知识点]
-🗣️ 建议应答（3 档）：
-   🟢 保守版：[稳妥话术]
-   🟡 中性版：[平衡话术]
-   🔴 高情商版：[让观众好感拉满的话术]
-"""
+SYSTEM_PROMPT_TEMPLATE = """你是一个专业的直播主持人和演讲者。现在有观众发了一条弹幕，请根据以下信息生成合适的回应：
 
-# 系统提示词：台词优化
-SYSTEM_SCRIPT_COACH = """你是一个专业的演讲教练。
-根据用户的原始台词，提供优化建议，让表达更流畅、更有感染力。
+**弹幕内容**：{danmaku_text}
 
-请提供：
-1. 流畅度评分（1-10）
-2. 3 条具体改进建议
-3. 优化后的完整版本（可选）
-"""
+**回应风格**：{style_desc}
 
-# 系统提示词：知识库总结
-SYSTEM_KNOWLEDGE_SUMMARY = """你是一个知识管理助手。
-根据用户的知识库内容，生成结构化的摘要和标签。
+**相关记忆**（如果有）：
+{memories_section}
 
-输出格式：
-📚 知识库摘要：[2-3 句话概括]
-🏷️ 核心标签：[标签1, 标签2, ...]
-💡 关键要点：[要点1, 要点2, ...]
-"""
+**相关知识库**（如果有）：
+{knowledge_section}
+
+**当前上下文**：
+{context_section}
+
+**要求**：
+1. 回应自然、亲切、专业
+2. 根据风格调整长度和语气
+3. 如果有相关记忆或知识库内容，可以适当引用
+4. 不要重复弹幕原文，直接给出回应"""
+
+# ── 话术生成 User Message ─────────────────────────────────────────────
+
+USER_MESSAGE_TEMPLATE = """弹幕内容：{danmaku_text}
+
+相关记忆：
+{memories_section}
+
+相关知识库：
+{knowledge_section}
+
+当前上下文：
+{context_section}
+
+请生成回应："""
 
 
-def get_prompt_template(name: str) -> str:
-    """获取指定名称的 Prompt 模板"""
-    templates = {
-        "assistant": SYSTEM_ASSISTANT,
-        "danmaku": SYSTEM_DANMAKU_RESPONSE,
-        "script_coach": SYSTEM_SCRIPT_COACH,
-        "knowledge_summary": SYSTEM_KNOWLEDGE_SUMMARY,
-    }
-    return templates.get(name, SYSTEM_ASSISTANT)
+# ── 构建函数 ──────────────────────────────────────────────────────────
+
+def build_system_prompt(
+    danmaku_text: str,
+    style: str,
+    memories: list[str] | None = None,
+    knowledge: list[str] | None = None,
+    context: dict | None = None,
+) -> str:
+    """构建系统提示词"""
+    memories = memories or []
+    knowledge = knowledge or []
+    context = context or {}
+
+    memories_section = "\n".join(f"- {m}" for m in memories) if memories else "（无相关记忆）"
+    knowledge_section = "\n".join(f"- {k}" for k in knowledge) if knowledge else "（无相关知识）"
+    context_section = str(context) if context else "（无上下文）"
+
+    import json
+    if context:
+        context_section = json.dumps(context, ensure_ascii=False)
+    else:
+        context_section = "（无上下文）"
+
+    return SYSTEM_PROMPT_TEMPLATE.format(
+        danmaku_text=danmaku_text,
+        style_desc=STYLE_DESCRIPTIONS.get(style, "简洁"),
+        memories_section=memories_section,
+        knowledge_section=knowledge_section,
+        context_section=context_section,
+    )
+
+
+def build_user_message(
+    danmaku_text: str,
+    memories: list[str] | None = None,
+    knowledge: list[str] | None = None,
+    context: dict | None = None,
+) -> str:
+    """构建用户消息"""
+    memories = memories or []
+    knowledge = knowledge or []
+    context = context or {}
+
+    memories_section = "\n".join(f"- {m}" for m in memories) if memories else "（无相关记忆）"
+    knowledge_section = "\n".join(f"- {k}" for k in knowledge) if knowledge else "（无相关知识）"
+
+    import json
+    context_section = json.dumps(context, ensure_ascii=False) if context else "（无上下文）"
+
+    return USER_MESSAGE_TEMPLATE.format(
+        danmaku_text=danmaku_text,
+        memories_section=memories_section,
+        knowledge_section=knowledge_section,
+        context_section=context_section,
+    )

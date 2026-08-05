@@ -65,7 +65,18 @@ class DirectorDanmakuCapture:
         self.bbox: tuple[int, int, int, int] | None = None  # (left, top, right, bottom)
         self._region_params: dict[str, int] = {}  # x, y, w, h
         self.cache: set[str] = set()
+        # 模糊去重缓存：核心内容 + 首次出现时间戳。
+        # 用相似度匹配而非完全相等，避免 OCR 识别同一条弹幕时
+        # 名字/标点有细微噪声导致去重失效、重复推送。
+        self._core_cache: dict[str, float] = {}
         self.cache_max_size = 500
+        self._dedup_similarity = 0.85  # 相似度阈值，超过视为同一条弹幕
+        self._dedup_ttl = 20.0  # 秒；超过后允许同内容弹幕再次出现
+        # 多帧确认缓存：core -> {text, first_seen}。
+        # 弹幕会停留多帧，第一帧识别常有噪声；同一弹幕至少确认 2 帧、
+        # 取两帧中更完整的文本再推送，显著降低"同一条弹幕识别出不同结果"。
+        self._pending: dict[str, dict] = {}
+        self._pending_confirm_timeout = 2.0  # 秒；超过后未确认也推送（防丢弹幕）
         self.running = False
         self.callback: Any = None
         self.capture_interval = capture_interval
@@ -81,6 +92,8 @@ class DirectorDanmakuCapture:
         self._region_params = {"x": x, "y": y, "w": width, "h": height}
         self.bbox = (x, y, x + width, y + height)
         self.cache.clear()
+        self._core_cache.clear()
+        self._pending.clear()
         self.cache_max_size = 500
         logger.info(f"[DirectorDanmakuCapture] 截图区域已更新: {self._region_params}，OCR 缓存已清空")
 
@@ -106,10 +119,14 @@ class DirectorDanmakuCapture:
         try:
             while self.running:
                 try:
+                    _t0 = __import__("time").time()
                     new_texts = await self._capture_and_ocr()
+                    _t1 = __import__("time").time()
+                    ocr_time = _t1 - _t0
                     if new_texts and self.callback:
-                        # 异步触发回调，不阻塞截图循环
                         asyncio.create_task(self.callback(new_texts))
+                    if ocr_time > 1.5:
+                        logger.warning(f"[DirectorDanmakuCapture] 耗时较长: OCR={ocr_time:.1f}s, 文本={len(new_texts)}条")
                 except Exception as e:
                     logger.error(f"[DirectorDanmakuCapture] 捕获失败: {e}")
 
@@ -138,8 +155,9 @@ class DirectorDanmakuCapture:
             if image_data is None:
                 return []
 
-            # 2. OCR 识别
-            return self._ocr_image(image_data)
+            # 2. OCR 识别（在线程池中运行，避免阻塞事件循环）
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, self._ocr_image, image_data)
 
         except Exception as e:
             logger.error(f"[DirectorDanmakuCapture] 截图+OCR 失败: {e}")
@@ -162,22 +180,41 @@ class DirectorDanmakuCapture:
         return self._director_available
 
     async def _fetch_screenshot(self) -> bytes | None:
-        """从 DirectorServer 获取截图 JPEG 数据"""
+        """从 DirectorServer 获取截图并裁剪到指定区域"""
         params = self._region_params
         if not params:
             logger.warning("[DirectorDanmakuCapture] 未设置截图区域")
             return None
 
-        query = "&".join(f"{k}={v}" for k, v in params.items())
-        path = f"/api/screenshot?{query}"
+        # DirectorServer 忽略 w/h 参数，始终返回全屏，需 Python 端自行裁剪
+        path = f"/api/screenshot"
 
         try:
             response = await asyncio.to_thread(self._http_get, path)
             data = response.get("data")
-            if data:
-                return base64.b64decode(data)
-            logger.warning(f"[DirectorDanmakuCapture] 截图返回无数据: {response}")
-            return None
+            if not data:
+                logger.warning(f"[DirectorDanmakuCapture] 截图返回无数据: {response}")
+                return None
+
+            # 解码全屏 JPEG
+            img = Image.open(__import__("io").BytesIO(base64.b64decode(data)))
+
+            # 计算缩放比例（DirectorServer 返回的逻辑坐标 vs 实际物理像素）
+            # 例：声明 1680x1050，实际 3360x2100 → 缩放 2x
+            json_w, json_h = response.get("width", 0), response.get("height", 0)
+            scale_x = img.size[0] / json_w if json_w else 1
+            scale_y = img.size[1] / json_h if json_h else 1
+
+            # 将逻辑坐标转换为物理像素并裁剪
+            crop = img.crop((
+                int(params["x"] * scale_x),
+                int(params["y"] * scale_y),
+                int((params["x"] + params["w"]) * scale_x),
+                int((params["y"] + params["h"]) * scale_y),
+            ))
+            buf = __import__("io").BytesIO()
+            crop.save(buf, format="JPEG", quality=85)
+            return buf.getvalue()
         except Exception as e:
             logger.error(f"[DirectorDanmakuCapture] 获取截图失败: {e}")
             return None
@@ -201,25 +238,128 @@ class DirectorDanmakuCapture:
         img = Image.open(__import__("io").BytesIO(image_data))
         frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
 
-        # 2. 图像预处理：二值化（不放大，2x 放大对中文识别帮助有限但耗时翻倍）
-        _, thresh = cv2.threshold(frame, 150, 255, cv2.THRESH_BINARY)
+        # 2. 图像预处理：
+        #    - OTSU 自适应阈值：弹幕常有彩字/描边/半透明背景，固定阈值(150)容易断字，
+        #      OTSU 按全局像素分布自动找阈值，对亮度不均的画面鲁棒得多。
+        #    - 轻量中值去噪：消除 OCR 噪声点，不放大图像（保住速度）。
+        _, thresh = cv2.threshold(frame, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        thresh = cv2.medianBlur(thresh, 3)
 
-        # 3. OCR（PSM 6 = 假设统一的文本块，适合弹幕场景）
+        # 3. OCR
         text = pytesseract.image_to_string(thresh, config="--psm 6", lang=self.lang)
 
-        # 4. 清洗与去重
+        # 4. 清洗、多帧确认与去重
         lines = [line.strip() for line in text.split("\n") if line.strip()]
         new_lines = []
+        now = time.time()
+
+        # 4.0 超时未确认的待确认弹幕 → 直接推送（避免弹幕太快滚过导致永久丢失）
+        for core, info in list(self._pending.items()):
+            if now - info["first_seen"] > self._pending_confirm_timeout:
+                del self._pending[core]
+                if info["text"] not in self.cache:
+                    self.cache.add(info["text"])
+                    self._core_cache[core] = now
+                    new_lines.append(info["text"])
+
         for line in lines:
-            # 过滤：必须包含至少 2 个中文字符，且不是纯符号/表情
             if not self._is_meaningful_text(line):
                 continue
-            if line not in self.cache:
-                self.cache.add(line)
-                new_lines.append(line)
-                if len(self.cache) > self.cache_max_size:
-                    cache_list = list(self.cache)
-                    self.cache = set(cache_list[-self.cache_max_size:])
+
+            # 模糊去重：提取核心内容（去掉用户名前缀），避免"小明:你好"和"小红:你好"重复
+            core = self._extract_core(line)
+            if self._is_duplicate(core):
+                continue
+
+            if core in self._pending:
+                # 多帧确认：同一弹幕再次出现，取两帧中更完整的文本再推送。
+                # 第一次识别可能有噪声（名字乱码/漏字），第二帧往往更清晰。
+                info = self._pending.pop(core)
+                final_text = line if len(line) >= len(info["text"]) else info["text"]
+                self._core_cache[core] = now
+                if final_text not in self.cache:
+                    self.cache.add(final_text)
+                    new_lines.append(final_text)
+            else:
+                # 首次出现：检查是否与待确认队列中的核心相似（OCR 噪声下
+                # 同一弹幕不同帧的核心可能有细微差异），相似则视为确认。
+                confirmed_key = self._find_similar_pending(core)
+                if confirmed_key is not None:
+                    info = self._pending.pop(confirmed_key)
+                    final_text = line if len(line) >= len(info["text"]) else info["text"]
+                    self._core_cache[core] = now
+                    if final_text not in self.cache:
+                        self.cache.add(final_text)
+                        new_lines.append(final_text)
+                else:
+                    # 真正首次出现 → 进入待确认队列，等下一帧确认
+                    self._pending[core] = {"text": line, "first_seen": now}
+
+        logger.debug(f"[DirectorDanmakuCapture] OCR 识别到 {len(new_lines)} 条新文本")
+        return new_lines
+
+    @staticmethod
+    def _extract_core(text: str) -> str:
+        """提取文本核心内容（去掉用户名前缀），用于模糊去重"""
+        import re
+        # 优先：找冒号分隔符（弹幕标准格式"名字: 内容"），取冒号后的内容。
+        # OCR 噪声下名字可能含空格/特殊字符（如 "@2 & 李不管 泽**xxx: 内容"），
+        # 不能靠"非冒号字符"匹配，必须直接用冒号定位。
+        m = re.search(r'[:：]', text)
+        if m:
+            text = text[m.end():].strip()
+        # 无冒号 → 保留全文（无法可靠判断名字边界，宁可保留也不误删内容）
+        # 去掉末尾标点
+        text = re.sub(r'[，。！？、；：""''【】《》…~]+$', '', text)
+        return text.strip()
+
+    def _is_duplicate(self, core: str) -> bool:
+        """
+        判断核心内容是否与缓存中的某条重复（相似度去重）
+
+        OCR 识别同一条滚动弹幕时，名字/标点常有细微噪声，完全相等判断
+        会漏掉这些"看起来不同实则相同"的弹幕。这里用 SequenceMatcher
+        相似度 > 阈值视为同一条，且超过 TTL 后允许相同内容再次出现
+        （避免弹幕重复轰炸被永久吞掉）。
+        """
+        import difflib
+        now = time.time()
+        stale_keys = [k for k, ts in self._core_cache.items() if now - ts > self._dedup_ttl]
+        for k in stale_keys:
+            self._core_cache.pop(k, None)
+
+        # 极短内容（<=2字）直接精确匹配，避免误杀不同弹幕
+        if len(core) <= 2:
+            return core in self._core_cache
+
+        for cached in self._core_cache:
+            sim = difflib.SequenceMatcher(None, cached, core).ratio()
+            if sim >= self._dedup_similarity:
+                # 命中重复：刷新时间戳（避免长时间不出现）
+                self._core_cache[cached] = now
+                return True
+        return False
+
+    def _find_similar_pending(self, core: str) -> str | None:
+        """
+        在待确认队列中查找与 core 相似的核心内容（相似度匹配）
+
+        OCR 噪声下同一弹幕不同帧的核心可能有细微差异（如漏字/错字），
+        用相似度匹配确认，而不是依赖精确相等。
+        Returns:
+            命中的 pending key；无则返回 None
+        """
+        import difflib
+        best_key: str | None = None
+        best_sim = 0.0
+        for key in self._pending:
+            sim = difflib.SequenceMatcher(None, key, core).ratio()
+            if sim > best_sim:
+                best_sim = sim
+                best_key = key
+        if best_key is not None and best_sim >= self._dedup_similarity:
+            return best_key
+        return None
 
         logger.debug(f"[DirectorDanmakuCapture] OCR 识别到 {len(new_lines)} 条新文本")
         return new_lines
@@ -235,6 +375,7 @@ class DirectorDanmakuCapture:
         - 中文字符 < 3 个 → 过滤（避免送礼动画"送出了 x1"等误识别）
         - 中文占比 < 25% → 过滤
         - 包含送礼/礼物特征（"x1"/"x2"/"BH"/"DB" 等大写字母+数字组合）→ 过滤
+        - 入场通知（"来了"、"等\d+人"）→ 过滤
         """
         if len(text) < 2:
             return False
@@ -249,15 +390,23 @@ class DirectorDanmakuCapture:
         if ratio < 0.25:
             return False
 
+        import re
+
         # 过滤送礼/礼物特征：文本中同时包含大写字母和数字的短片段
         # 典型模式："送出了 BH x1"、"ADH x1"、"图 x1"
-        import re
         # 匹配 "大写字母+数字" 组合（如 BH1, x1, x2, DB x1）
         if re.search(r'[A-Z]{2,}\s*x?\d', text):
             return False
         # 匹配 "x1"、"x2" 等礼物倍数
         if re.search(r'\bx\d\b', text):
             return False
+
+        # 过滤入场通知：如"鹏(*^_^*)哥等35人来了"、"小武。等50人来了"
+        # 模式：等 + 数字 + 人 + 来了，或 来了 结尾
+        if re.search(r'等\d+人', text) or re.search(r'来了$', text):
+            return False
+
+        return True
 
         return True
 
@@ -317,10 +466,15 @@ class DanmakuCapture:
         try:
             while self.running:
                 try:
+                    _t0 = __import__("time").time()
                     new_texts = await self._capture_and_ocr()
+                    _t1 = __import__("time").time()
+                    ocr_time = _t1 - _t0
                     if new_texts and self.callback:
                         # 异步触发回调，不阻塞截图循环
                         asyncio.create_task(self.callback(new_texts))
+                    if ocr_time > 1.5:
+                        logger.warning(f"[DanmakuCapture] 耗时较长: OCR={ocr_time:.1f}s, 文本={len(new_texts)}条")
                 except Exception as e:
                     logger.error(f"[DanmakuCapture] 捕获失败: {e}")
                 await asyncio.sleep(self.capture_interval)

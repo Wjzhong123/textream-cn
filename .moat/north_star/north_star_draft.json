@@ -1,6 +1,6 @@
 {
-  "version": "v1.0.0-20260804",
-  "generated_at": "2026-08-04T08:03:21.574807",
+  "version": "v1.0.0-20260805",
+  "generated_at": "2026-08-05T19:45:37.039468",
   "confirmed_at": null,
   "project": {
     "name": "textream-cn-master",
@@ -12,8 +12,8 @@
     ".": {
       "purpose": "root",
       "description": "项目根目录",
-      "file_count": 118,
-      "loc": 37796,
+      "file_count": 115,
+      "loc": 32583,
       "allowed_dependencies": [
         "*"
       ],
@@ -21,7 +21,7 @@
     },
     "Textream": {
       "purpose": "unknown",
-      "description": "项目构建脚本，用于编译和打包Textream项目",
+      "description": "自动化构建脚本，用于编译和打包Textream项目",
       "file_count": 1,
       "loc": 87,
       "allowed_dependencies": [],
@@ -29,7 +29,7 @@
     },
     "Textream/Textream": {
       "purpose": "unknown",
-      "description": "Textream 应用的核心业务模块，涵盖代理管理、服务器通信、文本编辑、语音识别、语言检测及国际化支持等关键功能。",
+      "description": "Textream应用的核心业务逻辑，包括AI代理管理、文本编辑、听写、外部显示及语言检测等功能。",
       "file_count": 20,
       "loc": 10639,
       "allowed_dependencies": [],
@@ -37,7 +37,7 @@
     },
     "Textream/Textream.xcodeproj": {
       "purpose": "unknown",
-      "description": "Xcode项目配置文件，管理源码引用、构建设置与目标依赖关系。",
+      "description": "Xcode项目配置文件，包含构建设置与源码引用",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -45,7 +45,7 @@
     },
     "Textream/Textream.xcodeproj/project.xcworkspace": {
       "purpose": "unknown",
-      "description": "Xcode工作区目录，存储项目引用与构建配置",
+      "description": "Xcode工作区，管理项目依赖和构建配置",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -53,7 +53,7 @@
     },
     "Textream/Textream.xcodeproj/project.xcworkspace/xcshareddata": {
       "purpose": "unknown",
-      "description": "Xcode工作区共享配置数据，用于团队统一的构建设置",
+      "description": "Xcode 工作区共享数据目录，存储项目级别的共享设置与配置",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -61,7 +61,7 @@
     },
     "Textream/Textream.xcodeproj/project.xcworkspace/xcshareddata/swiftpm": {
       "purpose": "unknown",
-      "description": "存储 Swift Package Manager 的共享缓存与依赖解析数据",
+      "description": "自动识别: unknown",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -69,7 +69,7 @@
     },
     "Textream/Textream.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/configuration": {
       "purpose": "unknown",
-      "description": "Swift Package Manager 配置目录，存储包镜像与注册表设置",
+      "description": "自动识别: unknown",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -125,7 +125,7 @@
     },
     "agent/TextreamAgent.app/Contents": {
       "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "description": "TextreamAgent macOS应用程序的包内容目录，包含应用二进制、资源文件与配置",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -159,7 +159,7 @@
       "purpose": "unknown",
       "description": "自动识别: unknown",
       "file_count": 4,
-      "loc": 846,
+      "loc": 878,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -167,7 +167,7 @@
       "purpose": "unknown",
       "description": "自动识别: unknown",
       "file_count": 4,
-      "loc": 1011,
+      "loc": 1075,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -183,7 +183,7 @@
       "purpose": "unknown",
       "description": "自动识别: unknown",
       "file_count": 2,
-      "loc": 284,
+      "loc": 285,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -191,7 +191,7 @@
       "purpose": "unknown",
       "description": "自动识别: unknown",
       "file_count": 3,
-      "loc": 233,
+      "loc": 265,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -229,7 +229,7 @@
     },
     "agent/web-console-dist": {
       "purpose": "unknown",
-      "description": "提供 Web 控制台的前端静态资源，用于代理的管理与监控界面",
+      "description": "自动识别: unknown",
       "file_count": 1,
       "loc": 17,
       "allowed_dependencies": [],
@@ -237,9 +237,9 @@
     },
     "agent/web-console-dist/assets": {
       "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 4,
-      "loc": 11308,
+      "description": "前端 Web 控制台的静态资源目录，存放样式文件（CSS）",
+      "file_count": 2,
+      "loc": 5751,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -310,8 +310,8 @@
     "web-console/src": {
       "purpose": "unknown",
       "description": "自动识别: unknown",
-      "file_count": 3,
-      "loc": 259,
+      "file_count": 2,
+      "loc": 265,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -327,7 +327,7 @@
       "purpose": "unknown",
       "description": "自动识别: unknown",
       "file_count": 11,
-      "loc": 1769,
+      "loc": 1809,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -335,7 +335,7 @@
       "purpose": "unknown",
       "description": "自动识别: unknown",
       "file_count": 2,
-      "loc": 211,
+      "loc": 214,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -349,7 +349,7 @@
     },
     "web-console/src/types": {
       "purpose": "utility",
-      "description": "通用工具（Helpers、Utils）",
+      "description": "集中导出 TypeScript 类型定义、接口和枚举，确保全局类型安全与一致性",
       "file_count": 1,
       "loc": 59,
       "allowed_dependencies": [],
@@ -359,7 +359,7 @@
       "purpose": "utility",
       "description": "通用工具（Helpers、Utils）",
       "file_count": 1,
-      "loc": 107,
+      "loc": 112,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     }

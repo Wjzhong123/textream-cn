@@ -1,29 +1,29 @@
 {
   "metadata": {
     "created_at": "2026-08-03T16:24:03.064194",
-    "updated_at": "2026-08-05T12:56:49.647644",
+    "updated_at": "2026-08-05T19:40:19.501084",
     "project": "/Users/mac/Desktop/textream-cn-master",
-    "total_issues": 17,
+    "total_issues": 18,
     "stats": {
-      "total": 17,
+      "total": 18,
       "by_status": {
-        "confirmed": 14,
+        "confirmed": 15,
         "pending": 3
       },
       "by_severity": {
-        "high": 13,
+        "high": 14,
         "critical": 1,
         "medium": 3
       },
       "by_fix_status": {
-        "unconfirmed": 16,
+        "unconfirmed": 17,
         "fixed": 1
       }
     },
     "baseline": {
-      "commit": "6a58a28",
+      "commit": "7cdce86",
       "branch": "master",
-      "timestamp": "2026-08-05T12:56:49.647021",
+      "timestamp": "2026-08-05T19:40:19.500696",
       "tool_version": "1.7.17",
       "coverage": [
         "语法检查",
@@ -525,6 +525,35 @@
       "scanner_version": "",
       "created_at": "2026-08-05T10:03:29.333176",
       "updated_at": "2026-08-05T10:03:29.333183",
+      "tags": [],
+      "parent_issue_id": null,
+      "child_issue_ids": []
+    },
+    {
+      "issue_id": "MOAT-018",
+      "title": "消防水带模式：asyncio.create_task 返回值被丢弃，功能可能完全失效",
+      "severity": "high",
+      "status": "confirmed",
+      "fix_status": "unconfirmed",
+      "file": "agent/agent_core/danmaku/scraper.py",
+      "line": 112,
+      "module": null,
+      "affected_objects": [],
+      "attack_consequence": "",
+      "business_impact": "",
+      "evidence": "",
+      "verification_plan": "",
+      "existing_protection": "",
+      "reproduction_steps": "",
+      "fix_solution": "",
+      "alternatives": [],
+      "affected_modules": [],
+      "regression_tests": [],
+      "check_type": "fail",
+      "scanner_name": "",
+      "scanner_version": "",
+      "created_at": "2026-08-05T19:36:41.948722",
+      "updated_at": "2026-08-05T19:36:41.948752",
       "tags": [],
       "parent_issue_id": null,
       "child_issue_ids": []
