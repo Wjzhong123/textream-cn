@@ -101,3 +101,7 @@ web-console/node_modules/
 
 # Vendored dependencies (each has its own git)
 third_party/
+
+# SQLite WAL 运行时文件
+.moat/memory.db-shm
+.moat/memory.db-wal
