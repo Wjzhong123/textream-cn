@@ -24,7 +24,7 @@ export function QuickResponses() {
       const response = await api.generateResponse(prompt, selectedLevel);
       addResponse({
         id: `${Date.now()}`,
-        text: response.data.response || response.data.message,
+        text: response.data.reply || response.data.response || response.data.message || '生成失败',
         level: selectedLevel,
         danmaku: customPrompt || `[快速回复] ${type}`,
         timestamp: Date.now(),

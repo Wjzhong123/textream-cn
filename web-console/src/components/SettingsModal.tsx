@@ -26,6 +26,7 @@ const LLM_PROVIDERS: Record<string, { name: string; baseUrl: string; defaultMode
   openai: { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', defaultModel: 'gpt-4o', hint: '国际推荐，质量最高' },
   deepseek: { name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', defaultModel: 'deepseek-chat', hint: '性价比高，中文优秀' },
   anthropic: { name: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', defaultModel: 'claude-3-5-sonnet-20241022', hint: '推理能力强' },
+  custom: { name: '自定义', baseUrl: '', defaultModel: '', hint: '自由填写 base_url 和模型' },
   none: { name: '不使用', baseUrl: '', defaultModel: '', hint: '降级到模板模式' },
 };
 

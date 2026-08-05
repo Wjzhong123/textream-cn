@@ -116,11 +116,47 @@ class MemoryManager:
         }
 
     def get_error_book(self, user_id: str = "default") -> list:
-        """获取错题本（importance >= 5 的记忆）"""
+        """获取错题本（importance >= 5 的记忆 + tag='lesson' 的记忆）"""
         user_memories = [m for m in self._cache if m.get("user_id") == user_id]
-        errors = [m for m in user_memories if m.get("importance", 0) >= 5]
+        errors = [
+            m for m in user_memories
+            if m.get("importance", 0) >= 5 or "lesson" in m.get("tags", [])
+        ]
         errors.sort(key=lambda x: x.get("importance", 0), reverse=True)
         return errors
+
+    def record_lesson(
+        self,
+        title: str,
+        content: str,
+        importance: int = 5,
+        user_id: str = "default",
+    ) -> dict[str, Any]:
+        """
+        记录一条教训到错题本。
+
+        Args:
+            title: 教训标题（如"权限弹窗显示错应用名"）
+            content: 详细描述 + 根因 + 修复方案
+            importance: 重要性（5=默认，6=重要，7=致命）
+            user_id: 用户 ID
+
+        Returns:
+            创建的教训条目
+        """
+        entry = {
+            "id": str(uuid.uuid4())[:8],
+            "timestamp": datetime.now().isoformat(),
+            "title": title,
+            "content": content,
+            "tags": ["lesson", "error_book"],
+            "importance": importance,
+            "user_id": user_id,
+            "type": "lesson",  # 标记为教训，而非普通记忆
+        }
+        self._cache.append(entry)
+        save_memories(self._cache)
+        return entry
 
     def delete(self, memory_id: str) -> bool:
         """删除记忆"""

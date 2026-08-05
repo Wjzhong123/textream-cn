@@ -1,7 +1,9 @@
+import { useCallback } from 'react';
 import { useAppStore } from '../stores/appStore';
 import { QuickResponses } from './QuickResponses';
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { api } from '../utils/api';
 
 const LEVELS = [
   { key: 'simple' as const, label: '简洁', icon: '○' },
@@ -13,7 +15,7 @@ interface ResponseSidebarProps {
   compact?: boolean;
 }
 
-export function ResponseSidebar({ compact }: ResponseSidebarProps) {
+export function ResponseSidebar({ compact: _compact }: ResponseSidebarProps) {
   const { responses, selectedLevel, setSelectedLevel, clearResponses } = useAppStore();
 
   const handleCopy = async (text: string) => {
@@ -21,6 +23,14 @@ export function ResponseSidebar({ compact }: ResponseSidebarProps) {
       await navigator.clipboard.writeText(text);
     } catch { /* ignore */ }
   };
+
+  const handleSendToTeleprompter = useCallback(async (text: string) => {
+    try {
+      await api.sendToTeleprompter(text);
+    } catch (err) {
+      console.error('Teleprompter failed:', err);
+    }
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -72,12 +82,20 @@ export function ResponseSidebar({ compact }: ResponseSidebarProps) {
               </div>
               <p className="text-[11px] text-text-muted mb-1 truncate">原弹幕: {response.danmaku}</p>
               <p className="text-sm text-text-primary leading-relaxed selectable-text mb-2">{response.text}</p>
-              <button
-                onClick={() => handleCopy(response.text)}
-                className="text-[11px] text-accent hover:text-accent/80 transition"
-              >
-                📋 复制
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleCopy(response.text)}
+                  className="text-[11px] text-accent hover:text-accent/80 transition"
+                >
+                  📋 复制
+                </button>
+                <button
+                  onClick={() => handleSendToTeleprompter(response.text)}
+                  className="text-[11px] text-accent/70 hover:text-accent transition"
+                >
+                  📺 投到提词器
+                </button>
+              </div>
             </div>
           ))
         )}

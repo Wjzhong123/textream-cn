@@ -1,9 +1,9 @@
 [
   {
     "version": "v1.0.0-20260803",
-    "confirmed_at": "2026-08-03T10:13:57.418261",
+    "confirmed_at": "2026-08-03T14:59:08.611306",
     "metrics": {
-      "compliance_rate": 0,
+      "compliance_rate": 95.0,
       "critical_hubs": 0,
       "warning_hubs": 0
     }

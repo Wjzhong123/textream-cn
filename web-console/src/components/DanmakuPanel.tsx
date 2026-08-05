@@ -33,7 +33,7 @@ export function DanmakuPanel() {
       const response = await api.generateResponse(danmakuText, selectedLevel);
       addResponse({
         id: `${Date.now()}`,
-        text: response.data.response || response.data.message,
+        text: response.data.reply || response.data.response || response.data.message || '生成失败',
         level: selectedLevel,
         danmaku: danmakuText,
         timestamp: Date.now(),

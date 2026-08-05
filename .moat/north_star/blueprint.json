@@ -1,11 +1,12 @@
 {
   "version": "v1.0.0-20260803",
-  "generated_at": "2026-08-03T10:13:45.855383",
-  "confirmed_at": "2026-08-03T10:13:57.418261",
+  "generated_at": "2026-08-03T14:59:08.610098",
+  "confirmed_at": "2026-08-03T14:59:08.610113",
+  "status": "active",
   "project": {
     "name": "textream-cn-master",
     "language": "python",
-    "framework": null,
+    "framework": "fastapi",
     "root_directory": "/Users/mac/Desktop/textream-cn-master"
   },
   "directory_map": {
@@ -14,233 +15,220 @@
       "description": "项目根目录",
       "file_count": 115,
       "loc": 31773,
-      "allowed_dependencies": [
-        "*"
-      ],
-      "forbidden_dependencies": []
-    },
-    "Textream": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 1,
-      "loc": 87,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "Textream/Textream": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 20,
-      "loc": 10479,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "Textream/Textream.xcodeproj": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "Textream/Textream.xcodeproj/project.xcworkspace": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "Textream/Textream.xcodeproj/project.xcworkspace/xcshareddata": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "Textream/Textream.xcodeproj/project.xcworkspace/xcshareddata/swiftpm": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "Textream/Textream.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/configuration": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "Textream/Textream/Assets.xcassets": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 1,
-      "loc": 6,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "Textream/Textream/Assets.xcassets/AccentColor.colorset": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 1,
-      "loc": 11,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "Textream/Textream/Assets.xcassets/AppIcon.appiconset": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 1,
-      "loc": 68,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "Textream/Textream/Fonts": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
     "agent": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "service",
+      "description": "后端服务层 — Python FastAPI 后端入口",
       "file_count": 5,
       "loc": 584,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
-    "agent/TextreamAgent.app": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "agent/TextreamAgent.app/Contents": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "agent/TextreamAgent.app/Contents/MacOS": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "agent/TextreamAgent.app/Contents/Resources": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "agent/TextreamAgent.app/Contents/_CodeSignature": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
     "agent/agent_core": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "api",
+      "description": "API 层 — FastAPI 路由、配置、错误总线",
       "file_count": 4,
       "loc": 782,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
+      "allowed_dependencies": [
+        "agent/agent_core/danmaku",
+        "agent/agent_core/knowledge",
+        "agent/agent_core/llm",
+        "agent/agent_core/memory",
+        "agent/one_memory_adapter"
+      ],
+      "forbidden_dependencies": [
+        "web-console/src"
+      ]
     },
     "agent/agent_core/danmaku": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "business",
+      "description": "弹幕业务层 — 弹幕抓取、处理、响应",
       "file_count": 4,
       "loc": 1011,
-      "allowed_dependencies": [],
+      "allowed_dependencies": [
+        "agent/agent_core/llm",
+        "agent/agent_core/knowledge",
+        "agent/agent_core/danmaku/ocr_scripts"
+      ],
       "forbidden_dependencies": []
     },
     "agent/agent_core/danmaku/ocr_scripts": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "utility",
+      "description": "OCR 工具层 — macOS Vision OCR 脚本",
       "file_count": 1,
       "loc": 77,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
     "agent/agent_core/knowledge": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "data",
+      "description": "知识库层 — 知识管理与检索",
       "file_count": 2,
       "loc": 284,
-      "allowed_dependencies": [],
+      "allowed_dependencies": [
+        "agent/agent_core/llm"
+      ],
       "forbidden_dependencies": []
     },
     "agent/agent_core/llm": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "infrastructure",
+      "description": "LLM 基础设施层 — 模型路由、提示词管理",
       "file_count": 3,
       "loc": 233,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
     "agent/agent_core/memory": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "data",
+      "description": "记忆层 — AI 记忆管理、MCP 客户端",
       "file_count": 4,
       "loc": 955,
-      "allowed_dependencies": [],
+      "allowed_dependencies": [
+        "agent/one_memory_adapter"
+      ],
       "forbidden_dependencies": []
     },
+    "agent/one_memory_adapter": {
+      "purpose": "infrastructure",
+      "description": "One Memory 适配层 — 与 One 系统的记忆桥接",
+      "file_count": 8,
+      "loc": 1169,
+      "allowed_dependencies": [],
+      "forbidden_dependencies": [
+        "agent/agent_core"
+      ]
+    },
     "agent/captiocr_adapter": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "infrastructure",
+      "description": "OCR 适配层 — CaptiOCR 文字识别适配",
       "file_count": 3,
       "loc": 276,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
-    "agent/one_memory_adapter": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 8,
-      "loc": 1169,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
     "agent/scripts": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "utility",
+      "description": "脚本工具层 — 辅助脚本",
       "file_count": 1,
       "loc": 44,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
+    "agent/agent_core/__pycache__": {
+      "purpose": "build",
+      "description": "Python 缓存",
+      "file_count": 0,
+      "loc": 0,
+      "allowed_dependencies": [],
+      "forbidden_dependencies": []
+    },
     "agent/web-console-dist": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "build",
+      "description": "前端构建产物",
       "file_count": 1,
       "loc": 17,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
     "agent/web-console-dist/assets": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "purpose": "build",
+      "description": "前端构建产物资源",
       "file_count": 2,
       "loc": 5702,
       "allowed_dependencies": [],
+      "forbidden_dependencies": []
+    },
+    "web-console": {
+      "purpose": "presentation",
+      "description": "Web 前端展示层 — React/TypeScript 控制台",
+      "file_count": 10,
+      "loc": 367,
+      "allowed_dependencies": [],
+      "forbidden_dependencies": [
+        "agent"
+      ]
+    },
+    "web-console/public": {
+      "purpose": "presentation",
+      "description": "前端静态资源",
+      "file_count": 0,
+      "loc": 0,
+      "allowed_dependencies": [],
+      "forbidden_dependencies": []
+    },
+    "web-console/src": {
+      "purpose": "presentation",
+      "description": "前端源码 — 入口和样式",
+      "file_count": 3,
+      "loc": 259,
+      "allowed_dependencies": [
+        "web-console/src/components",
+        "web-console/src/hooks",
+        "web-console/src/stores"
+      ],
+      "forbidden_dependencies": [
+        "agent"
+      ]
+    },
+    "web-console/src/components": {
+      "purpose": "presentation",
+      "description": "前端组件层 — UI 组件",
+      "file_count": 11,
+      "loc": 1450,
+      "allowed_dependencies": [
+        "web-console/src/hooks",
+        "web-console/src/stores",
+        "web-console/src/types",
+        "web-console/src/utils"
+      ],
+      "forbidden_dependencies": [
+        "agent"
+      ]
+    },
+    "web-console/src/hooks": {
+      "purpose": "presentation",
+      "description": "前端 Hooks — 自定义 React Hooks",
+      "file_count": 2,
+      "loc": 120,
+      "allowed_dependencies": [
+        "web-console/src/stores",
+        "web-console/src/types"
+      ],
+      "forbidden_dependencies": [
+        "agent"
+      ]
+    },
+    "web-console/src/stores": {
+      "purpose": "presentation",
+      "description": "前端状态管理 — 全局状态",
+      "file_count": 1,
+      "loc": 50,
+      "allowed_dependencies": [
+        "web-console/src/types",
+        "web-console/src/utils"
+      ],
+      "forbidden_dependencies": [
+        "agent"
+      ]
+    },
+    "web-console/src/types": {
+      "purpose": "utility",
+      "description": "前端类型定义 — TypeScript 类型",
+      "file_count": 1,
+      "loc": 30,
+      "allowed_dependencies": [],
+      "forbidden_dependencies": []
+    },
+    "web-console/src/utils": {
+      "purpose": "utility",
+      "description": "前端工具函数",
+      "file_count": 1,
+      "loc": 30,
+      "allowed_dependencies": [
+        "web-console/src/types"
+      ],
       "forbidden_dependencies": []
     },
     "docs": {
@@ -253,7 +241,7 @@
     },
     "docs/learnings": {
       "purpose": "docs",
-      "description": "文档目录",
+      "description": "学习记录",
       "file_count": 1,
       "loc": 23,
       "allowed_dependencies": [],
@@ -269,107 +257,81 @@
     },
     "tests/moat": {
       "purpose": "test",
-      "description": "测试层",
+      "description": "Moat 测试",
       "file_count": 2,
       "loc": 146,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
-    },
-    "textream-windows": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 5,
-      "loc": 607,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "textream-windows/assets": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "web-console": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 10,
-      "loc": 367,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "web-console/public": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "web-console/src": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 3,
-      "loc": 259,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "web-console/src/assets": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 0,
-      "loc": 0,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "web-console/src/components": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 11,
-      "loc": 1769,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "web-console/src/hooks": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 2,
-      "loc": 211,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "web-console/src/stores": {
-      "purpose": "unknown",
-      "description": "自动识别: unknown",
-      "file_count": 1,
-      "loc": 80,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "web-console/src/types": {
-      "purpose": "utility",
-      "description": "通用工具（Helpers、Utils）",
-      "file_count": 1,
-      "loc": 59,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
-    },
-    "web-console/src/utils": {
-      "purpose": "utility",
-      "description": "通用工具（Helpers、Utils）",
-      "file_count": 1,
-      "loc": 107,
-      "allowed_dependencies": [],
-      "forbidden_dependencies": []
     }
   },
-  "layering_rules": [],
+  "layering_rules": [
+    {
+      "id": "layer-001",
+      "name": "展示层不得直接调用后端",
+      "description": "web-console 不能直接 import agent/ 下的模块，必须通过 HTTP API 通信",
+      "from_layer": "web-console/src",
+      "to_layer": "agent",
+      "allowed": false,
+      "severity": "critical",
+      "severity_label": "critical"
+    },
+    {
+      "id": "layer-002",
+      "name": "展示层不得直接调用后端模块",
+      "description": "web-console 组件不能直接 import agent/agent_core 下的模块",
+      "from_layer": "web-console/src",
+      "to_layer": "agent/agent_core",
+      "allowed": false,
+      "severity": "critical",
+      "severity_label": "critical"
+    },
+    {
+      "id": "layer-003",
+      "name": "基础设施层不要反向依赖 API 层",
+      "description": "one_memory_adapter 不能 import agent/agent_core 下的模块",
+      "from_layer": "agent/one_memory_adapter",
+      "to_layer": "agent/agent_core",
+      "allowed": false,
+      "severity": "critical",
+      "severity_label": "critical"
+    },
+    {
+      "id": "layer-004",
+      "name": "适配层不要反向依赖 API 层",
+      "description": "captiocr_adapter 不能 import agent/agent_core 下的模块",
+      "from_layer": "agent/captiocr_adapter",
+      "to_layer": "agent/agent_core",
+      "allowed": false,
+      "severity": "high",
+      "severity_label": "high"
+    },
+    {
+      "id": "layer-005",
+      "name": "业务层不能直接访问基础设施",
+      "description": "danmaku 模块不能直接访问 one_memory_adapter（需通过 memory 层）",
+      "from_layer": "agent/agent_core/danmaku",
+      "to_layer": "agent/one_memory_adapter",
+      "allowed": false,
+      "severity": "medium",
+      "severity_label": "medium"
+    },
+    {
+      "id": "layer-006",
+      "name": "构建产物不能反向依赖源码",
+      "description": "web-console-dist 不能 import web-console/src 下的模块",
+      "from_layer": "agent/web-console-dist",
+      "to_layer": "web-console/src",
+      "allowed": false,
+      "severity": "low",
+      "severity_label": "low"
+    }
+  ],
   "dependency_hubs": [],
+  "allowed_dependencies": {},
   "north_star_metrics": {
     "architecture_compliance_rate": 0.95,
-    "max_dependency_hubs_critical": 5,
-    "max_dependency_hubs_warning": 10,
+    "max_dependency_hubs_critical": 2,
+    "max_dependency_hubs_warning": 5,
     "max_debt_velocity": 0
   }
 }

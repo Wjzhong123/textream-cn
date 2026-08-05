@@ -14,6 +14,8 @@ import json
 import logging
 from typing import Any
 
+from ..llm.router import get_llm_router as get_llm
+
 logger = logging.getLogger(__name__)
 
 
@@ -168,8 +170,6 @@ class DanmakuResponder:
     ) -> str:
         """使用 LLM 生成话术"""
         try:
-            from ..llm.router import get_llm_router as get_llm
-
             llm = get_llm(self.llm_provider)
 
             # 构建 prompt
@@ -179,20 +179,22 @@ class DanmakuResponder:
                 ResponseStyle.HUMOR: "幽默化解（轻松氛围）",
             }
 
+            knowledge = (context or {}).get("knowledge", [])
+
             system_prompt = f"""你是一个专业的直播主持人和演讲者。现在有观众发了一条弹幕，请根据以下信息生成合适的回应：
 
-**弹幕内容**：{{danmaku}}
+**弹幕内容**：{danmaku_text}
 
 **回应风格**：{style_desc.get(style, "简洁")}
 
 **相关记忆**（如果有）：
-{{memories}}
+{chr(10).join(f"- {m}" for m in memories) if memories else "（无相关记忆）"}
 
 **相关知识库**（如果有）：
-{{knowledge}}
+{chr(10).join(f"- {k}" for k in knowledge) if knowledge else "（无相关知识）"}
 
 **当前上下文**：
-{{context}}
+{json.dumps(context, ensure_ascii=False) if context else "（无上下文）"}
 
 **要求**：
 1. 回应自然、亲切、专业
@@ -213,7 +215,7 @@ class DanmakuResponder:
 
 请生成回应："""
 
-            response = llm.chat_with_system(user_message, system_prompt)
+            response = await llm.async_chat_with_system(user_message, system_prompt)
             return response.strip()
 
         except Exception as e:

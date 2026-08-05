@@ -176,15 +176,50 @@ class AIMemoryManager:
         }
 
     async def get_error_book(self, user_id: str | None = None) -> list[dict[str, Any]]:
-        """获取错题本（importance >= 5 的记忆）"""
+        """获取错题本（importance >= 5 的记忆 + tag='lesson' 的记忆）"""
         results = await self.search(
             query="",
             limit=100,
             min_importance=5,
             user_id=user_id or self.user_id,
         )
-        results.sort(key=lambda x: x.get("importance", 0), reverse=True)
-        return results
+        # 也搜索 lesson 标签的记忆
+        lesson_results = await self.search(
+            query="lesson",
+            limit=20,
+            user_id=user_id or self.user_id,
+        )
+        combined = results + [r for r in lesson_results if r not in results]
+        combined.sort(key=lambda x: x.get("importance", 0), reverse=True)
+        return combined
+
+    async def record_lesson(
+        self,
+        title: str,
+        content: str,
+        importance: int = 5,
+        user_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        记录一条教训到错题本。
+
+        Args:
+            title: 教训标题
+            content: 详细描述 + 根因 + 修复方案
+            importance: 重要性（5=默认，6=重要，7=致命）
+            user_id: 用户 ID
+
+        Returns:
+            创建的教训条目
+        """
+        result = await self.add(
+            title=title,
+            content=content,
+            tags=["lesson", "error_book"],
+            importance=importance,
+            user_id=user_id or self.user_id,
+        )
+        return result
 
     async def delete(self, memory_id: str) -> bool:
         """删除记忆（通过 dreaming 整理机制，暂不支持直接删除）"""
@@ -250,6 +285,9 @@ class SyncAIMemoryManager:
 
     def get_error_book(self, **kwargs):
         return self._run(self._async.get_error_book(**kwargs))
+
+    def record_lesson(self, **kwargs):
+        return self._run(self._async.record_lesson(**kwargs))
 
     def delete(self, **kwargs):
         return self._run(self._async.delete(**kwargs))

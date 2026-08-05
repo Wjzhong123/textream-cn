@@ -2,12 +2,13 @@
 LLM 路由层 - 支持多提供商 + 自定义配置 + 自动降级
 """
 
+import asyncio
 import json
 import os
 from typing import Any
 from pathlib import Path
 
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 
 from ..config import get_settings
 
@@ -66,9 +67,10 @@ class LLMRouter:
 
     def _apply_config(self, provider: str):
         """按优先级应用配置：持久化 > 环境变量 > 默认"""
-        # 1) 尝试从持久化文件加载
+        # 1) 尝试从持久化文件加载（不管 provider 名称是否匹配，持久化文件永远优先）
         persisted = _load_persisted_config()
-        if persisted and persisted.get("provider") == provider:
+        if persisted:
+            self.provider = persisted.get("provider", provider)
             self.api_key = persisted.get("api_key", "")
             self.base_url = persisted.get("base_url", "")
             self.default_model = persisted.get("model", "")
@@ -123,7 +125,28 @@ class LLMRouter:
         temperature: float = 0.7,
     ) -> str:
         """
-        发送聊天请求
+        发送聊天请求（同步版本，兼容旧代码路径）
+
+        Args:
+            messages: 消息列表 [{"role": "user", "content": "..."}]
+            model: 模型名称（默认使用提供商默认模型）
+            max_tokens: 最大生成长度
+            temperature: 温度参数
+
+        Returns:
+            LLM 回复文本
+        """
+        return asyncio.run(self.async_chat(messages, model=model, max_tokens=max_tokens, temperature=temperature))
+
+    async def async_chat(
+        self,
+        messages: list[dict[str, str]],
+        model: str | None = None,
+        max_tokens: int = 1024,
+        temperature: float = 0.7,
+    ) -> str:
+        """
+        发送聊天请求（异步版本，用于 async 上下文，不阻塞事件循环）
 
         Args:
             messages: 消息列表 [{"role": "user", "content": "..."}]
@@ -138,8 +161,8 @@ class LLMRouter:
             return "[LLM Error] 未配置 API Key，请在设置中填写"
 
         try:
-            client = OpenAI(api_key=self.api_key, base_url=self.base_url)
-            resp = client.chat.completions.create(
+            client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
+            resp = await client.chat.completions.create(
                 model=model or self.default_model,
                 messages=messages,
                 max_tokens=max_tokens,
@@ -155,12 +178,21 @@ class LLMRouter:
         system_prompt: str = "",
         **kwargs,
     ) -> str:
-        """便捷方法：带系统提示词的聊天"""
+        """便捷方法：带系统提示词的聊天（同步版本）"""
+        return asyncio.run(self.async_chat_with_system(user_message, system_prompt=system_prompt, **kwargs))
+
+    async def async_chat_with_system(
+        self,
+        user_message: str,
+        system_prompt: str = "",
+        **kwargs,
+    ) -> str:
+        """便捷方法：带系统提示词的聊天（异步版本，不阻塞事件循环）"""
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": user_message})
-        return self.chat(messages, **kwargs)
+        return await self.async_chat(messages, **kwargs)
 
 
 def get_llm_router(provider: str | None = None) -> LLMRouter:

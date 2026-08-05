@@ -3,18 +3,19 @@
 
 集成捕获、识别、应答、推送的完整流程
 支持引擎：
-  - DirectorDanmakuCapture（主力）→ 截屏权限归 Textream.app
+  - DirectorDanmakuCapture（主力）→ DirectorServer（截图权限归 Textream.app）
   - CaptiOCR（视觉框选 + ROVER/TF-IDF 去重）
-  - DanmakuCapture（fallback）→ PIL.ImageGrab
+  - DanmakuCapture（fallback）→ PIL.ImageGrab（需要 Python 进程有屏幕录制权限）
 """
 
 import asyncio
 import json
 import logging
 import os
+import time
 from typing import Any
 
-from .scraper import DanmakuCapture, DirectorDanmakuCapture, create_capture
+from .scraper import DanmakuCapture, DirectorDanmakuCapture
 from .responder import DanmakuResponder, ResponseStyle
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,8 @@ class DanmakuProcessor:
             self.capture = DanmakuCapture()
             logger.info("[DanmakuProcessor] 初始化完成（启动时自动检测 DirectorServer）")
 
+        self._ocr_lang = os.environ.get("OCR_LANG", "chi_sim+eng")
+
         self.responder = DanmakuResponder(
             memory_manager=memory_manager,
             knowledge_manager=knowledge_manager,
@@ -86,6 +89,12 @@ class DanmakuProcessor:
         import shutil
 
         textream_path = "/Applications/Textream.app"
+
+        # 如果 /Applications/Textream.app 不存在，检查 agent 同目录
+        if not os.path.isdir(textream_path):
+            local_path = str(Path(__file__).resolve().parent.parent.parent / "Textream.app")
+            if os.path.isdir(local_path):
+                textream_path = local_path
 
         # 检查是否已安装
         if not os.path.isdir(textream_path):
@@ -133,55 +142,79 @@ class DanmakuProcessor:
 
     async def launch(self):
         """
-        自动检测或启动 DirectorServer 并切换引擎（如果可用）
+        引擎初始化：自动检测 DirectorServer 并切换引擎
 
-        可重复调用：如果当前引擎仍是 fallback（DirectorServer 后来才启动），
-        重新检测并切换。
+        检测 Textream.app 内的 DirectorServer（端口 7575）是否可用。
+        如果可用，使用 DirectorDanmakuCapture（截图权限归 Textream.app）。
+        否则回退到 PIL.ImageGrab（需要 Python 进程有屏幕录制权限）。
+
+        注意：macOS 15+ 上无论 PIL.ImageGrab 还是 screencapture，
+        都需要调用进程有屏幕录制权限。避免此问题的唯一方法是使用
+        DirectorServer（Textream.app 内置 HTTP 截图服务）。
         """
-        if self._use_captiocr:
+        if self._launched or self._use_captiocr:
             return
 
-        # 如果已切换到 DirectorServer，跳过
-        if self._capture_engine == "director_server":
-            return
+        self._launched = True
 
         # 尝试 DirectorServer
         director = DirectorDanmakuCapture(
-            capture_interval=self.capture.capture_interval
-            if hasattr(self.capture, 'capture_interval') else 1.0,
-            lang=self.capture.lang if hasattr(self.capture, 'lang') else "chi_sim+eng",
+            capture_interval=1.0,
+            lang=self._ocr_lang,
+            timeout=2.0,
         )
-        available = await director._check_director_available()
 
-        if not available:
-            # DirectorServer 不可达，尝试自动启动 Textream.app
-            logger.info("[DanmakuProcessor] DirectorServer 不可达，尝试自动启动 Textream.app...")
-            if error_bus:
-                error_bus.report("danmaku", "warn", "DirectorServer 不可达，尝试自动启动 Textream.app")
-            started = await self._launch_textream_app()
-            if started:
-                # 等待 DirectorServer HTTP 就绪
-                for i in range(10):
-                    await asyncio.sleep(1)
-                    available = await director._check_director_available()
-                    if available:
-                        logger.info(f"[DanmakuProcessor] DirectorServer 就绪（等待 {i+1} 秒）")
-                        break
+        # 复制区域和回调
+        if self.capture.bbox:
+            x, y, w, h = self.capture.bbox
+            director.set_region(x, y, w - x, h - y)
 
-        if available:
-            # 保留旧 capture 的 region 设置
-            if self.capture.bbox:
-                x, y, right, bottom = self.capture.bbox
-                director.set_region(x, y, right - x, bottom - y)
+        if await director._check_director_available():
             self.capture = director
             self._capture_engine = "director_server"
-            logger.info("[DanmakuProcessor] ✅ 已切换到 DirectorServer 引擎（截屏权限归 Textream.app）")
+            logger.info(f"[DanmakuProcessor] 切换到 DirectorServer 引擎 (端口 {director.DEFAULT_HTTP_PORT})")
+            logger.info("[DanmakuProcessor] 截图权限归 Textream.app，不再弹 One.app 权限窗")
         else:
-            logger.info("[DanmakuProcessor] DirectorServer 无法启动，使用 PIL.ImageGrab（将弹出 Python 权限请求）")
+            # DirectorServer 不可用，尝试启动 Textream.app
+            logger.info("[DanmakuProcessor] DirectorServer 不可用，尝试启动 Textream.app")
+            launched = await self._launch_textream_app()
+            if launched:
+                # 等待 DirectorServer 就绪
+                for i in range(5):
+                    await asyncio.sleep(1)
+                    if await director._check_director_available():
+                        self.capture = director
+                        self._capture_engine = "director_server"
+                        logger.info(f"[DanmakuProcessor] Textream.app 启动后 DirectorServer 就绪 (端口 {director.DEFAULT_HTTP_PORT})")
+                        return
+                logger.warning("[DanmakuProcessor] Textream.app 已启动但 DirectorServer 未就绪，使用 PIL.ImageGrab 回退（需要屏幕录制权限）")
+            else:
+                logger.info("[DanmakuProcessor] Textream.app 未安装或无法启动，使用 PIL.ImageGrab 回退（需要屏幕录制权限）")
+
+            self._capture_engine = "pil_imagegrab"
+            # 如果已经是 DanmakuCapture 实例则无需更换
+            if not isinstance(self.capture, DanmakuCapture):
+                fallback = DanmakuCapture(capture_interval=1.0, lang=self._ocr_lang)
+                if self.capture.bbox:
+                    x, y, w, h = self.capture.bbox
+                    fallback.set_region(x, y, w - x, h - y)
+                self.capture = fallback
+            logger.info("[DanmakuProcessor] 使用 PIL.ImageGrab 回退引擎（需要 Python 有屏幕录制权限）")
 
     def set_region(self, x: int, y: int, width: int, height: int):
-        """设置截图区域"""
+        """设置截图区域，同时通知前端清空旧弹幕"""
         self.capture.set_region(x, y, width, height)
+        # 通知前端清空弹幕列表，避免新旧区域混淆
+        if self.websocket_callback:
+            try:
+                # 使用 asyncio 主动调度（可能被同步上下文调用）
+                import asyncio
+                asyncio.ensure_future(self.websocket_callback({
+                    "type": "clear_danmaku",
+                    "timestamp": __import__("time").time() * 1000,
+                }))
+            except Exception:
+                pass
 
     def set_websocket_callback(self, callback):
         """
@@ -204,18 +237,25 @@ class DanmakuProcessor:
 
         self.running = True
 
-        # 设置弹幕捕获回调：将 OCR 识别的原始文本推送到前端
+        # 设置弹幕捕获回调：OCR 文本 → 前端推送 + AI 应答生成
         async def on_danmaku(texts: list[str]):
-            if not self.websocket_callback:
-                return
             for text in texts:
-                msg = {
-                    "text": text,
-                    "timestamp": __import__("time").time() * 1000,
-                    "platform": "director_server",
-                }
-                await self.websocket_callback(msg)
-                logger.info(f"[DanmakuProcessor] 推送到前端: {text}")
+                # 1) 推送到前端
+                if self.websocket_callback:
+                    msg = {
+                        "text": text,
+                        "timestamp": time.time() * 1000,
+                        "platform": self._capture_engine or "unknown",
+                    }
+                    await self.websocket_callback(msg)
+                    logger.info(f"[DanmakuProcessor] 推送到前端: {text}")
+
+                # 2) 触发 AI 应答生成（3 档话术）
+                await self._process_single_danmaku(text)
+
+        # CaptiOCR 需要设置事件循环才能从后台线程调度异步回调
+        if hasattr(self.capture, 'set_loop'):
+            self.capture.set_loop(asyncio.get_event_loop())
 
         self.capture.set_callback(on_danmaku)
 
@@ -283,6 +323,12 @@ class DanmakuProcessor:
                     )
         except Exception as e:
             logger.debug(f"[DanmakuProcessor] 自动保存弹幕记忆失败（非关键）: {e}")
+
+    async def set_capture_interval(self, interval: float):
+        """动态调整捕获间隔（秒），0.1~5.0"""
+        interval = max(0.1, min(5.0, interval))
+        self.capture.capture_interval = interval
+        logger.info(f"[DanmakuProcessor] 捕获间隔调整为 {interval}s")
 
     async def generate_manual_response(
         self,

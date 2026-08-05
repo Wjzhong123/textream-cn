@@ -9,11 +9,13 @@ Textream 智能体内核 v2.0 - FastAPI 主服务
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 import logging
 import os
 import sys
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 
 # 添加 agent 目录到 Python 路径
@@ -21,7 +23,7 @@ agent_dir = Path(__file__).parent.parent
 if str(agent_dir) not in sys.path:
     sys.path.insert(0, str(agent_dir))
 
-from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from fastapi.staticfiles import StaticFiles
@@ -162,7 +164,7 @@ def _extract_file_text(filename: str, content: bytes) -> str | None:
     if ext == ".docx":
         try:
             from docx import Document
-            doc = Document(__import__("io").BytesIO(content))
+            doc = Document(io.BytesIO(content))
             paragraphs = []
             for para in doc.paragraphs:
                 text = para.text.strip()
@@ -235,7 +237,7 @@ def create_app() -> FastAPI:
         return {
             "status": "ok",
             "version": "2.0.0-alpha",
-            "timestamp": __import__("datetime").datetime.now().isoformat(),
+            "timestamp": datetime.now().isoformat(),
         }
 
     # ── Status ─────────────────────────────────────────────────────────────
@@ -266,7 +268,7 @@ def create_app() -> FastAPI:
             },
             "llm": {
                 "provider": settings.llm_provider,
-                "configured": bool(__import__("os").environ.get(f"{settings.llm_provider.upper()}_API_KEY")),
+                "configured": bool(os.environ.get(f"{settings.llm_provider.upper()}_API_KEY")),
             },
         }
 
@@ -291,7 +293,7 @@ def create_app() -> FastAPI:
         """添加记忆（支持 JSON body）"""
         mgr = _get_active_memory()
         if not mgr:
-            raise __import__("fastapi").HTTPException(status_code=503, detail="Memory not available")
+            raise HTTPException(status_code=503, detail="Memory not available")
         title = entry.get("title", "")
         content = entry.get("content", "")
         tags = entry.get("tags", [])
@@ -307,14 +309,14 @@ def create_app() -> FastAPI:
     async def delete_memory(memory_id: str, _auth: dict = Depends(require_api_key)):
         mgr = _get_active_memory()
         if not mgr:
-            raise __import__("fastapi").HTTPException(status_code=503, detail="Memory not available")
+            raise HTTPException(status_code=503, detail="Memory not available")
         if isinstance(mgr, AIMemoryManager):
             ok = await mgr.delete(memory_id)
         else:
             ok = mgr.delete(memory_id)
         if ok:
             return {"status": "deleted", "id": memory_id}
-        raise __import__("fastapi").HTTPException(status_code=404, detail="Memory not found")
+        raise HTTPException(status_code=404, detail="Memory not found")
 
     @app.get("/api/memory/search")
     async def search_memory(q: str, limit: int = 20, user_id: str = "default", _auth: dict = Depends(require_api_key)):
@@ -369,19 +371,19 @@ def create_app() -> FastAPI:
     async def add_knowledge(request: dict, _auth: dict = Depends(require_api_key)):
         """添加知识库文档（支持 JSON body 或 form data）"""
         if not knowledge_mgr:
-            raise __import__("fastapi").HTTPException(status_code=503, detail="Knowledge not available")
+            raise HTTPException(status_code=503, detail="Knowledge not available")
         name = request.get("name", "")
         content = request.get("content", "")
         if not name or not content:
-            raise __import__("fastapi").HTTPException(status_code=400, detail="name and content are required")
+            raise HTTPException(status_code=400, detail="name and content are required")
         result = await knowledge_mgr.add_file(name, content)
         return {"status": "ok", **result}
 
     @app.post("/api/knowledge/upload")
-    async def upload_knowledge(file: __import__("fastapi").UploadFile = __import__("fastapi").File(...), _auth: dict = Depends(require_api_key)):
+    async def upload_knowledge(file: UploadFile = File(...), _auth: dict = Depends(require_api_key)):
         """上传知识库文档（支持 .txt .md .json .docx .doc）"""
         if not knowledge_mgr:
-            raise __import__("fastapi").HTTPException(status_code=503, detail="Knowledge not available")
+            raise HTTPException(status_code=503, detail="Knowledge not available")
 
         filename = file.filename or "unnamed"
         content_bytes = await file.read()
@@ -389,7 +391,7 @@ def create_app() -> FastAPI:
         # 提取文本内容
         text = _extract_file_text(filename, content_bytes)
         if text is None:
-            raise __import__("fastapi").HTTPException(
+            raise HTTPException(
                 status_code=400,
                 detail=f"不支持的文件格式或解析失败: {filename}",
             )
@@ -400,10 +402,10 @@ def create_app() -> FastAPI:
     @app.delete("/api/knowledge/delete/{name}")
     async def delete_knowledge(name: str, _auth: dict = Depends(require_api_key)):
         if not knowledge_mgr:
-            raise __import__("fastapi").HTTPException(status_code=503, detail="Knowledge not available")
+            raise HTTPException(status_code=503, detail="Knowledge not available")
         if knowledge_mgr.delete_file(name):
             return {"status": "deleted", "name": name}
-        raise __import__("fastapi").HTTPException(status_code=404, detail="Knowledge file not found")
+        raise HTTPException(status_code=404, detail="Knowledge file not found")
 
     # ── Chat ───────────────────────────────────────────────────────────────
     @app.post("/api/chat")
@@ -446,11 +448,28 @@ def create_app() -> FastAPI:
 回答风格：简洁、专业、实用。"""
 
         try:
-            reply = llm_router.chat_with_system(message, system_prompt)
+            reply = await llm_router.async_chat_with_system(message, system_prompt)
             return {"reply": reply}
         except Exception as e:
             error_bus.report("llm", "error", f"LLM 聊天失败: {e}", {"message": message[:50]})
             raise
+
+    # ── Teleprompter ─────────────────────────────────────────────────────────
+    @app.post("/api/teleprompter")
+    async def teleprompter(request: dict, _auth: dict = Depends(require_api_key)):
+        """将文本投送到 Textream.app 原生提词器（通过 textream:// URL scheme）"""
+        text = request.get("text", "")
+        if not text:
+            raise HTTPException(status_code=400, detail="text is required")
+        import urllib.parse, asyncio
+        encoded = urllib.parse.quote(text)
+        proc = await asyncio.create_subprocess_exec(
+            "open", f"textream://read?text={encoded}",
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await proc.wait()
+        return {"status": "ok", "text": text[:50]}
 
     # ── Danmaku ──────────────────────────────────────────────────────────────
     @app.get("/api/danmaku/status")
@@ -465,11 +484,28 @@ def create_app() -> FastAPI:
             "lang": getattr(danmaku_processor.capture, 'lang', 'chi_sim+eng'),
         }
 
+    @app.get("/api/danmaku/settings")
+    async def danmaku_settings_get(_auth: dict = Depends(require_api_key)):
+        """获取弹幕捕获设置"""
+        return {
+            "capture_interval": danmaku_processor.capture.capture_interval if danmaku_processor else 1.0,
+            "engine": getattr(danmaku_processor, '_capture_engine', 'unknown') if danmaku_processor else None,
+        }
+
+    @app.put("/api/danmaku/settings")
+    async def danmaku_settings_update(body: dict, _auth: dict = Depends(require_api_key)):
+        """更新弹幕捕获设置"""
+        if not danmaku_processor:
+            raise HTTPException(status_code=503, detail="Danmaku processor not available")
+        if "capture_interval" in body:
+            await danmaku_processor.set_capture_interval(float(body["capture_interval"]))
+        return {"status": "ok"}
+
     @app.post("/api/danmaku/start")
     async def danmaku_start(_auth: dict = Depends(require_api_key)):
         """启动弹幕捕获"""
         if not danmaku_processor:
-            raise __import__("fastapi").HTTPException(status_code=503, detail="Danmaku processor not available")
+            raise HTTPException(status_code=503, detail="Danmaku processor not available")
         if danmaku_processor.running:
             return {"status": "already_running"}
 
@@ -481,11 +517,11 @@ def create_app() -> FastAPI:
             return {"status": "started"}
         except ValueError as e:
             error_bus.report("danmaku", "error", f"启动弹幕捕获失败: {e}")
-            raise __import__("fastapi").HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
             logger.error(f"Failed to start danmaku capture: {e}")
             error_bus.report("danmaku", "error", f"启动弹幕捕获异常: {e}")
-            raise __import__("fastapi").HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
 
     @app.post("/api/danmaku/stop")
     async def danmaku_stop(_auth: dict = Depends(require_api_key)):
@@ -499,7 +535,7 @@ def create_app() -> FastAPI:
     async def danmaku_region(request: dict, _auth: dict = Depends(require_api_key)):
         """设置截图区域（支持手动坐标 或 CaptiOCR 视觉框选）"""
         if not danmaku_processor:
-            raise __import__("fastapi").HTTPException(status_code=503, detail="Danmaku processor not available")
+            raise HTTPException(status_code=503, detail="Danmaku processor not available")
 
         x = request.get("x", 0)
         y = request.get("y", 0)
@@ -514,19 +550,14 @@ def create_app() -> FastAPI:
         """
         打开 CaptiOCR 视觉区域选择器（tkinter 原生透明遮罩）。
         与当前捕获引擎无关，独立可用。
-        在全屏透明遮罩上拖拽鼠标框选弹幕区，松开即确认。
+        通过独立子进程运行（tkinter 需要主线程，FastAPI 工作在线程池中）。
         """
         if not danmaku_processor:
-            raise __import__("fastapi").HTTPException(status_code=503, detail="Danmaku processor not available")
+            raise HTTPException(status_code=503, detail="Danmaku processor not available")
 
-        # 优先使用 processor 自带的 CaptiOCR bridge（如果已启用）
-        if hasattr(danmaku_processor.capture, 'show_region_selector'):
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, danmaku_processor.capture.show_region_selector)
-        else:
-            # 独立创建 CaptiOCR 选择器（与当前引擎解耦）
-            loop = asyncio.get_event_loop()
-            result = await loop.run_in_executor(None, _show_standalone_selector)
+        # 始终使用独立子进程方式（tkinter 需要主线程，不能在线程池中运行）
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, _show_standalone_selector)
 
         if result is None:
             return {"status": "cancelled", "region": None}
@@ -536,6 +567,70 @@ def create_app() -> FastAPI:
         danmaku_processor.set_region(x, y, w, h)
         return {"status": "ok", "region": {"x": x, "y": y, "width": w, "height": h}}
 
+    @app.post("/api/danmaku/engine")
+    async def danmaku_engine(body: dict, _auth: dict = Depends(require_api_key)):
+        """
+        切换弹幕捕获引擎
+
+        Body:
+            {"engine": "director_server"}  — DirectorServer（主力，截屏权限归 Textream.app）
+            {"engine": "captiocr"}         — CaptiOCR（视觉框选 + ROVER/TF-IDF 去重）
+            {"engine": "pil_imagegrab"}    — PIL.ImageGrab（fallback）
+        """
+        if not danmaku_processor:
+            raise HTTPException(status_code=503, detail="Danmaku processor not available")
+
+        engine = body.get("engine", "").strip().lower()
+        if engine not in ("director_server", "captiocr", "pil_imagegrab"):
+            raise HTTPException(status_code=400, detail=f"不支持的引擎: {engine}")
+
+        # 如果正在运行，先停止
+        was_running = danmaku_processor.running
+        if was_running:
+            await danmaku_processor.stop()
+
+        # 切换引擎
+        if engine == "captiocr":
+            from captiocr_adapter import CaptiOCRBridge
+            # 保留旧区域设置
+            old_bbox = danmaku_processor.capture.bbox
+            bridge = CaptiOCRBridge()
+            if old_bbox:
+                x, y, right, bottom = old_bbox
+                bridge.set_region(x, y, right - x, bottom - y)
+            danmaku_processor.capture = bridge
+            danmaku_processor._capture_engine = "captiocr"
+            danmaku_processor._use_captiocr = True
+            logger.info("[DanmakuProcessor] 切换到 CaptiOCR 引擎")
+        elif engine == "pil_imagegrab":
+            from agent_core.danmaku.scraper import DanmakuCapture
+            old_bbox = danmaku_processor.capture.bbox
+            fallback = DanmakuCapture()
+            if old_bbox:
+                x, y, right, bottom = old_bbox
+                fallback.set_region(x, y, right - x, bottom - y)
+            danmaku_processor.capture = fallback
+            danmaku_processor._capture_engine = "pil_imagegrab"
+            danmaku_processor._use_captiocr = False
+            logger.info("[DanmakuProcessor] 切换到 PIL.ImageGrab 引擎")
+        else:
+            # director_server — 重新检测/启动 DirectorServer
+            from agent_core.danmaku.scraper import DirectorDanmakuCapture
+            old_bbox = danmaku_processor.capture.bbox
+            director = DirectorDanmakuCapture()
+            if old_bbox:
+                x, y, right, bottom = old_bbox
+                director.set_region(x, y, right - x, bottom - y)
+            danmaku_processor.capture = director
+            danmaku_processor._capture_engine = "director_server"
+            danmaku_processor._use_captiocr = False
+            logger.info("[DanmakuProcessor] 切换到 DirectorServer 引擎")
+
+        # 如果之前正在运行，重新启动
+        if was_running:
+            await danmaku_processor.start()
+
+        return {"status": "ok", "engine": engine, "was_running": was_running}
 
     @app.websocket("/ws/danmaku")
     async def websocket_danmaku(websocket: WebSocket):
@@ -591,7 +686,7 @@ def create_app() -> FastAPI:
     async def update_model_settings(body: dict, _auth: dict = Depends(require_api_key)):
         """更新 LLM 配置（运行时生效，自动持久化）"""
         if not llm_router:
-            raise __import__("fastapi").HTTPException(status_code=503, detail="LLM Router not available")
+            raise HTTPException(status_code=503, detail="LLM Router not available")
 
         provider = body.get("provider", llm_router.provider)
         base_url = body.get("base_url", llm_router.base_url)

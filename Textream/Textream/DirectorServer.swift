@@ -276,28 +276,28 @@ class DirectorServer {
         ])
     }
 
-    /// Capture a screen region using /usr/sbin/screencapture (Process-based).
-    /// Returns JPEG data, or nil on failure.
+    /// Capture a screen region using /usr/sbin/screencapture via NSAppleScript.
+    /// Using NSAppleScript ensures the TCC permission is inherited from Textream.app,
+    /// avoiding the "One.app" prompt issue.
     private static func captureScreenRegion(x: Int, y: Int, width: Int, height: Int) -> Data? {
         let tempPath = "/tmp/textream_shot_\(UUID().uuidString).jpg"
         defer { try? FileManager.default.removeItem(atPath: tempPath) }
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
-        process.arguments = ["-x", "-t", "jpg", "-R", "\(x),\(y),\(width),\(height)", tempPath]
+        // 使用 NSAppleScript 运行 screencapture，确保 TCC 权限继承自 Textream.app
+        let scriptSource = """
+        do shell script "/usr/sbin/screencapture -x -t jpg -R '\(x),\(y),\(width),\(height)' '\(tempPath)'"
+        """
 
-        do {
-            try process.run()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else {
-                Self.logger.error("screencapture exited with code \(process.terminationStatus)")
-                return nil
-            }
-            return try? Data(contentsOf: URL(fileURLWithPath: tempPath))
-        } catch {
-            Self.logger.error("screencapture failed: \(error.localizedDescription)")
+        let script = NSAppleScript(source: scriptSource)
+        var error: NSDictionary?
+        script?.executeAndReturnError(&error)
+
+        if let error = error {
+            Self.logger.error("NSAppleScript/screencapture failed: \(error)")
             return nil
         }
+
+        return try? Data(contentsOf: URL(fileURLWithPath: tempPath))
     }
 
     /// Handle /api/capture-status: return whether screen capture is available.

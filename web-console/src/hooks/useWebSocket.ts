@@ -8,8 +8,11 @@ export function useWebSocket() {
   const { addDanmaku, setConnected, serverUrl } = useAppStore();
 
   const connect = useCallback(() => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      return;
+    // 关闭旧连接（防止 serverUrl 变化时泄漏）
+    if (socketRef.current) {
+      socketRef.current.onclose = null; // 阻止自动重连
+      socketRef.current.close();
+      socketRef.current = null;
     }
 
     // 将 http:// 协议转换为 ws:// 协议

@@ -1,0 +1,88 @@
+# architect.yml — 架构验收规则定义
+# 由 `moat accept --generate-rules` 自动生成
+# 根据项目实际情况修改后，`moat accept` 将按此规则验收
+
+project: "textream-cn-master"
+version: 1.0
+
+rules:
+  # ── 步骤 1：架构规则审计（人工核查） ──
+  - id: ARCH_RULES
+    title: "架构规则审计"
+    description: "依据架构设计文档，逐项明确规则来源、对应文件、验证方式、通过与否"
+    step: 1
+    type: manual
+    severity: CRITICAL
+    config:
+      items:
+        - "规则来源是否清晰标注（架构文档/项目规范/框架约定）"
+        - "每条规则是否有对应的代码检查覆盖"
+        - "来源不明的规则是否标注为『待验证』"
+
+  # ── 步骤 2：目录责任边界 ──
+  - id: DIR_BOUNDARIES
+    title: "目录责任边界"
+    description: "验证每个目录的职责是否唯一、存放规则清晰"
+    step: 2
+    type: structure
+    severity: CRITICAL
+    operator: directory_responsibility
+
+  # ── 步骤 3：最小模块演练 ──
+  - id: MODULE_DRILL
+    title: "最小模块演练"
+    description: "通过极简模块验证理论规则落地性"
+    step: 3
+    type: call_chain
+    severity: HIGH
+    operator: minimal_module_drill
+
+  # ── 步骤 4：接口统一返回规范 ──
+  - id: API_CONSISTENCY
+    title: "接口统一返回规范"
+    description: "所有 API 接口响应格式统一"
+    step: 4
+    type: api_contract
+    severity: CRITICAL
+    operator: api_response_spec
+
+  # ── 步骤 5：框架复用与封装边界 ──
+  - id: FRAMEWORK_BOUNDARY
+    title: "框架复用与封装边界"
+    description: "优先复用框架能力，避免无效冗余封装"
+    step: 5
+    type: ast_pattern
+    severity: HIGH
+    operator: framework_usage
+
+  # ── 步骤 6：运行证据 ──
+  - id: RUNTIME_EVIDENCE
+    title: "启动、配置、数据库与日志规则"
+    description: "固定运行标准，留存实际证据"
+    step: 6
+    type: runtime
+    severity: HIGH
+    operator: runtime_evidence
+
+  # ── 步骤 7：收口验收结果 ──
+  - id: TRUTH_DOC
+    title: "输出架构实施真元文档"
+    description: "汇总所有验收项，生成标准化文档"
+    step: 7
+    type: structure
+    severity: RECOMMENDED
+    operator: truth_document
+
+  # ── 步骤 8：固化版本 ──
+  - id: GIT_BASELINE
+    title: "固化版本，留存稳定基线"
+    description: "提交 Git 版本，创建基线"
+    step: 8
+    type: manual
+    severity: RECOMMENDED
+    config:
+      items:
+        - "当前是否有 Git 仓库"
+        - "上次提交时间"
+        - "是否有未提交的变更"
+        - "是否已创建基线 Tag（建议 v1.0）"

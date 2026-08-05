@@ -98,6 +98,11 @@ class ApiClient {
     return this.client.delete(`/api/knowledge/delete/${id}`);
   }
 
+  // Teleprompter
+  async sendToTeleprompter(text: string) {
+    return this.client.post('/api/teleprompter', { text });
+  }
+
   // Health check
   async healthCheck() {
     return this.client.get('/api/health');

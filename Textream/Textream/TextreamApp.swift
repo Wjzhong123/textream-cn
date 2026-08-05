@@ -183,6 +183,26 @@ struct TextreamApp: App {
                     }
                 }
             }
+
+            CommandMenu("控制面板") {
+                Button("🌐 打开控制面板") {
+                    if let url = URL(string: "http://127.0.0.1:9123") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+
+                Divider()
+
+                Button("🔄 重启后端") {
+                    AgentCoreManager.shared.restart()
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+
+                Button("📊 后端状态") {
+                    AgentCoreManager.shared.showStatus()
+                }
+            }
         }
     }
 }

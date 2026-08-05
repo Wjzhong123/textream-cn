@@ -127,7 +127,8 @@
     "timeout": 30,
     "enable_security_auditor": true,
     "enable_architect": true,
-    "enable_concurrency_devil": true
+    "enable_concurrency_devil": true,
+    "api_key": "sk-nBTeox74EiUNptOK5SxPQ3woZnPKcc9X"
   },
   "env_isolation": {
     "enabled": true,

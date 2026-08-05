@@ -50,12 +50,13 @@ class ErrorBus:
 
         Args:
             limit: 返回条数上限
-            level: 可选级别过滤
+            level: 可选级别过滤（先过滤再 limit，确保返回尽可能多的匹配条目）
         """
-        result = list(self.errors)[-limit:]
-        result.reverse()
+        result = list(self.errors)
         if level:
             result = [e for e in result if e["level"] == level]
+        result = result[-limit:]
+        result.reverse()
         return result
 
     def clear(self) -> None:

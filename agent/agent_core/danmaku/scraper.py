@@ -77,10 +77,12 @@ class DirectorDanmakuCapture:
     # ── 接口兼容方法（与 DanmakuCapture 一致） ──────────────────────────
 
     def set_region(self, x: int, y: int, width: int, height: int):
-        """设置截图区域"""
+        """设置截图区域（同时清空 OCR 去重缓存，避免新旧区域混淆）"""
         self._region_params = {"x": x, "y": y, "w": width, "h": height}
         self.bbox = (x, y, x + width, y + height)
-        logger.info(f"[DirectorDanmakuCapture] 截图区域: {self._region_params}")
+        self.cache.clear()
+        self.cache_max_size = 500
+        logger.info(f"[DirectorDanmakuCapture] 截图区域已更新: {self._region_params}，OCR 缓存已清空")
 
     def set_callback(self, callback):
         """设置弹幕回调函数"""
@@ -106,7 +108,8 @@ class DirectorDanmakuCapture:
                 try:
                     new_texts = await self._capture_and_ocr()
                     if new_texts and self.callback:
-                        await self.callback(new_texts)
+                        # 异步触发回调，不阻塞截图循环
+                        asyncio.create_task(self.callback(new_texts))
                 except Exception as e:
                     logger.error(f"[DirectorDanmakuCapture] 捕获失败: {e}")
 
@@ -198,11 +201,10 @@ class DirectorDanmakuCapture:
         img = Image.open(__import__("io").BytesIO(image_data))
         frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
 
-        # 2. 图像预处理：放大 + 二值化
-        frame = cv2.resize(frame, (0, 0), fx=2.0, fy=2.0)
+        # 2. 图像预处理：二值化（不放大，2x 放大对中文识别帮助有限但耗时翻倍）
         _, thresh = cv2.threshold(frame, 150, 255, cv2.THRESH_BINARY)
 
-        # 3. OCR
+        # 3. OCR（PSM 6 = 假设统一的文本块，适合弹幕场景）
         text = pytesseract.image_to_string(thresh, config="--psm 6", lang=self.lang)
 
         # 4. 清洗与去重
@@ -279,8 +281,10 @@ class DanmakuCapture:
     """
     弹幕捕获器（fallback）
 
-    直接通过 PIL.ImageGrab + pytesseract 实现屏幕 OCR。
-    仅当 DirectorServer 不可用时使用。
+    通过 PIL.ImageGrab 截图 + pytesseract OCR。
+    注意：macOS 上 PIL.ImageGrab 底层也调用 screencapture，因此需要
+    Python 进程有屏幕录制权限。推荐使用 DirectorServer（Textream.app）
+    来避免权限问题。
     """
 
     def __init__(
@@ -299,7 +303,8 @@ class DanmakuCapture:
 
     def set_region(self, x: int, y: int, width: int, height: int):
         self.bbox = (x, y, x + width, y + height)
-        logger.info(f"[DanmakuCapture] 截图区域: bbox={self.bbox}")
+        self.cache.clear()
+        logger.info(f"[DanmakuCapture] 截图区域已更新: bbox={self.bbox}，OCR 缓存已清空")
 
     def set_callback(self, callback):
         self.callback = callback
@@ -314,7 +319,8 @@ class DanmakuCapture:
                 try:
                     new_texts = await self._capture_and_ocr()
                     if new_texts and self.callback:
-                        await self.callback(new_texts)
+                        # 异步触发回调，不阻塞截图循环
+                        asyncio.create_task(self.callback(new_texts))
                 except Exception as e:
                     logger.error(f"[DanmakuCapture] 捕获失败: {e}")
                 await asyncio.sleep(self.capture_interval)
@@ -329,11 +335,21 @@ class DanmakuCapture:
         logger.info("[DanmakuCapture] 停止捕获")
 
     async def _capture_and_ocr(self) -> list[str]:
+        """
+        使用 PIL.ImageGrab 截图 + pytesseract OCR
+
+        注意：macOS 上 PIL.ImageGrab 底层调用 screencapture，因此 Python 进程
+        需要屏幕录制权限。推荐使用 DirectorDanmakuCapture 来避免权限问题。
+        """
+        if not self.bbox:
+            return []
+
+        x, y, right, bottom = self.bbox
+
         try:
-            from PIL import ImageGrab
-            screenshot = ImageGrab.grab(bbox=self.bbox)
-            frame = cv2.cvtColor(np.array(screenshot), cv2.COLOR_RGB2GRAY)
-            frame = cv2.resize(frame, (0, 0), fx=2.0, fy=2.0)
+            # PIL.ImageGrab 底层调用 macOS screencapture
+            img = ImageGrab.grab(bbox=(x, y, right, bottom))
+            frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
             _, thresh = cv2.threshold(frame, 150, 255, cv2.THRESH_BINARY)
             text = pytesseract.image_to_string(thresh, config="--psm 6", lang=self.lang)
             lines = [line.strip() for line in text.split("\n") if line.strip()]
@@ -391,7 +407,7 @@ async def create_capture(
         if available:
             logger.info("[create_capture] 使用 DirectorServer 引擎（截屏权限归 Textream.app）")
             return capture
-        logger.info("[create_capture] DirectorServer 不可用，回退到 PIL.ImageGrab")
+        logger.info("[create_capture] DirectorServer 不可用，回退到 PIL.ImageGrab（需要屏幕录制权限）")
 
     return DanmakuCapture(capture_interval=capture_interval, lang=lang)
 

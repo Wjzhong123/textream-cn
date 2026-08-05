@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 from pathlib import Path
@@ -189,7 +190,7 @@ class KnowledgeManager:
             except Exception as e:
                 logger.warning(f"[KnowledgeManager] 语义搜索失败，降级到子串匹配: {e}")
 
-        return self._search_local(query, limit)
+        return await asyncio.to_thread(self._search_local, query, limit)
 
     def _search_local(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         """本地子串匹配（降级方案）"""

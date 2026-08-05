@@ -708,5 +708,868 @@
       "failed": 0
     },
     "is_positive": true
+  },
+  {
+    "id": "refactor_1785723280275",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785723280.275796,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 1
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785723304141",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785723304.141484,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 1
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785740910210",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785740910.210803,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 2
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785740922856",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785740922.8560169,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 2
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785740955693",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785740955.693585,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 96.42857142857143,
+      "source": "moat_check",
+      "total_checks": 28,
+      "passed": 1,
+      "failed": 2
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785741280409",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785741280.409131,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785741292232",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785741292.2324212,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785741302703",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785741302.7031949,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785741423565",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785741423.5657878,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785747739052",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785747739.052958,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785747784109",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785747784.1096241,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785754072182",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785754072.1822941,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 2
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785754591506",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785754591.5064719,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 2
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785754946551",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785754946.5519638,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 2
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785756865185",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785756865.185119,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785756871378",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785756871.378473,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785760486413",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785760486.413708,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785760965673",
+    "type": "refactor_success",
+    "value": 0.5,
+    "weight": 0.25,
+    "timestamp": 1785760965.6739671,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": true,
+      "pain_score_before": 0.0,
+      "pain_score_after": 0.0,
+      "source": "moat_check",
+      "total_checks": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785761044853",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785761044.853102,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 1
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785761227828",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785761227.828484,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 1
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785761691424",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785761691.4243689,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 40.0,
+      "source": "moat_check",
+      "total_checks": 5,
+      "passed": 3,
+      "failed": 1
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785762317812",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785762317.8122969,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785762317816",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785762317.816683,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785762595265",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785762595.265781,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 86.66666666666667,
+      "source": "moat_check",
+      "total_checks": 15,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785795984797",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785795984.797793,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 87.5,
+      "source": "moat_check",
+      "total_checks": 16,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785796342640",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785796342.640324,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 87.5,
+      "source": "moat_check",
+      "total_checks": 16,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785801659314",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785801659.314049,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785801659319",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785801659.319045,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785801901793",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785801901.793673,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785801901798",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785801901.798819,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785802782718",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785802782.7183309,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785802782723",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785802782.72304,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785803847966",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785803847.966163,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785803847971",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785803847.9711769,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785804123715",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785804123.715733,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785804123720",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785804123.7209358,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785804142217",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785804142.217601,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785804142222",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785804142.22281,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785893173937",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785893173.937568,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785893173943",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785893173.943511,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785894198911",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785894198.9111848,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785894198916",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785894198.9169998,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785894297799",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785894297.799194,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785894297805",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785894297.805172,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785894576172",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785894576.172585,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 84.61538461538461,
+      "source": "moat_check",
+      "total_checks": 13,
+      "passed": 2,
+      "failed": 10
+    },
+    "is_positive": true
+  },
+  {
+    "id": "fp_1785894576178",
+    "type": "false_positive_rate",
+    "value": 1.0,
+    "weight": -0.15,
+    "timestamp": 1785894576.178176,
+    "context": {
+      "error_type": "fail",
+      "file_path": "agent/agent_core/memory/ai_memory.py",
+      "source": "moat_check"
+    },
+    "is_positive": false
+  },
+  {
+    "id": "refactor_1785895219806",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785895219.8061771,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 88.88888888888889,
+      "source": "moat_check",
+      "total_checks": 18,
+      "passed": 2,
+      "failed": 12
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785895409219",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785895409.219615,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 95.65217391304348,
+      "source": "moat_check",
+      "total_checks": 23,
+      "passed": 1,
+      "failed": 15
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785895583612",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785895583.612724,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 95.65217391304348,
+      "source": "moat_check",
+      "total_checks": 23,
+      "passed": 1,
+      "failed": 15
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785904757938",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785904757.938727,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 95.65217391304348,
+      "source": "moat_check",
+      "total_checks": 23,
+      "passed": 1,
+      "failed": 15
+    },
+    "is_positive": true
+  },
+  {
+    "id": "refactor_1785905809530",
+    "type": "refactor_success",
+    "value": 0.0,
+    "weight": 0.25,
+    "timestamp": 1785905809.530992,
+    "context": {
+      "files_changed": 0,
+      "tests_passed": false,
+      "pain_score_before": 0.0,
+      "pain_score_after": 95.83333333333334,
+      "source": "moat_check",
+      "total_checks": 24,
+      "passed": 1,
+      "failed": 15
+    },
+    "is_positive": true
   }
 ]

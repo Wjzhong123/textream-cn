@@ -38,6 +38,25 @@ class AgentCoreManager {
             }
         }
 
+        // 桌面项目路径（开发/发布通用）
+        let desktopPaths = [
+            URL(fileURLWithPath: NSHomeDirectory() + "/Desktop/textream-cn-master/agent"),
+            URL(fileURLWithPath: NSHomeDirectory() + "/Desktop/直播AI军师/agent"),
+        ]
+        for path in desktopPaths {
+            if FileManager.default.fileExists(atPath: path.appendingPathComponent("run_agent_v2.py").path) {
+                return path
+            }
+        }
+
+        // 环境变量覆盖
+        if let envPath = ProcessInfo.processInfo.environment["TEXTREAM_AGENT_DIR"] {
+            let envURL = URL(fileURLWithPath: envPath)
+            if FileManager.default.fileExists(atPath: envURL.appendingPathComponent("run_agent_v2.py").path) {
+                return envURL
+            }
+        }
+
         return nil
     }
 
@@ -52,6 +71,23 @@ class AgentCoreManager {
             return
         }
 
+        // 异步检查后端是否已就绪，不阻塞主线程
+        let healthCheck = URL(string: "http://127.0.0.1:\(agentPort)/api/health")!
+        URLSession.shared.dataTask(with: healthCheck) { [weak self] data, response, error in
+            guard let self = self else { return }
+            DispatchQueue.main.async {
+                if let httpResponse = response as? HTTPURLResponse,
+                   httpResponse.statusCode == 200 {
+                    print("[AgentCore] ✅ 检测到已有后端运行中")
+                    return
+                }
+                // 后端未就绪，启动它
+                self._launchBackend()
+            }
+        }.resume()
+    }
+
+    private func _launchBackend() {
         guard let agentDir else {
             print("[AgentCore] ❌ 找不到 agent 目录")
             return
@@ -70,14 +106,37 @@ class AgentCoreManager {
         process?.arguments = ["run_agent_v2.py"]
         process?.currentDirectoryURL = agentDir
 
-        // 捕获输出用于调试
+        // 捕获输出用于调试（异步读取，防止阻塞子进程）
         let pipe = Pipe()
         process?.standardOutput = pipe
         process?.standardError = pipe
 
+        // 在后台线程读取管道数据，防止缓冲区满阻塞子进程
+        let outHandle = pipe.fileHandleForReading
+        outHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            if data.isEmpty { return }
+            if let text = String(data: data, encoding: .utf8), !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                // 打印所有输出，用于调试
+                for line in text.components(separatedBy: "\n") {
+                    let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty {
+                        print("[AgentCore] \(trimmed)")
+                    }
+                }
+            }
+        }
+
         do {
             try process?.run()
             print("[AgentCore] ✅ 启动进程 (PID: \(process?.processIdentifier ?? 0))")
+
+            // 捕获进程退出状态
+            process?.terminationHandler = { [weak self] proc in
+                let status = proc.terminationStatus
+                print("[AgentCore] ⚠️ 后端进程退出 (PID: \(proc.processIdentifier), 状态: \(status))")
+                self?.process = nil
+            }
 
             // 等待后端就绪（轮询 /api/health）
             startReadinessCheck()
@@ -85,6 +144,41 @@ class AgentCoreManager {
             print("[AgentCore] ❌ 启动失败: \(error.localizedDescription)")
             process = nil
         }
+    }
+
+    /// 检查端口是否已被占用
+    private func isPortInUse(port: Int) -> Bool {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/sbin/lsof")
+        task.arguments = ["-i", ":\(port)", "-P", "-n", "-l"]
+
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = pipe
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            return output.contains("LISTEN")
+        } catch {
+            return false
+        }
+    }
+
+    /// 检查后端健康状态
+    private func checkBackendHealth(completion: @escaping (Bool) -> Void) {
+        let url = URL(string: "http://127.0.0.1:\(agentPort)/api/health")!
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            if let httpResponse = response as? HTTPURLResponse,
+               httpResponse.statusCode == 200 {
+                DispatchQueue.main.async { completion(true) }
+            } else {
+                DispatchQueue.main.async { completion(false) }
+            }
+        }
+        task.resume()
     }
 
     func stop() {
@@ -133,6 +227,52 @@ class AgentCoreManager {
                 }
             }
             task.resume()
+        }
+    }
+
+    func restart() {
+        print("[AgentCore] 🔄 正在重启后端...")
+        stop()
+        // 等 1 秒确保进程已清理
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.start()
+        }
+    }
+
+    func showStatus() {
+        let status: String
+        if isRunning {
+            // 检测后端是否就绪
+            let url = URL(string: "http://127.0.0.1:\(agentPort)/api/health")!
+            let semaphore = DispatchSemaphore(value: 0)
+            var backendReady = false
+
+            let task = URLSession.shared.dataTask(with: url) { data, response, error in
+                if let httpResponse = response as? HTTPURLResponse,
+                   httpResponse.statusCode == 200 {
+                    backendReady = true
+                }
+                semaphore.signal()
+            }
+            task.resume()
+            _ = semaphore.wait(timeout: .now() + 3.0)
+
+            if backendReady {
+                status = "✅ 后端运行中 (Port \(agentPort))"
+            } else {
+                status = "⚠️ 进程已启动，但后端未就绪 (Port \(agentPort))"
+            }
+        } else {
+            status = "❌ 后端未运行"
+        }
+
+        DispatchQueue.main.async {
+            let alert = NSAlert()
+            alert.messageText = "后端状态"
+            alert.informativeText = status
+            alert.alertStyle = .informational
+            alert.addButton(withTitle: "确定")
+            alert.runModal()
         }
     }
 }

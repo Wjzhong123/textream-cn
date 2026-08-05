@@ -175,6 +175,20 @@ body {
   cursor: pointer;
 }
 
+/* ── 话术风格按钮 ── */
+@utility pill-active {
+  background: var(--color-accent-bg);
+  color: var(--color-accent);
+  border: 1px solid var(--color-border-accent);
+  box-shadow: 0 0 12px rgba(192, 132, 252, 0.15);
+}
+
+@utility pill-inactive {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid transparent;
+}
+
 /* ── 模态框 ── */
 @utility modal-overlay {
   background: rgba(0, 0, 0, 0.6);

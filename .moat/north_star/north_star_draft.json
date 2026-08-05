@@ -1,6 +1,6 @@
 {
-  "version": "v1.0.0-20260803",
-  "generated_at": "2026-08-03T10:12:45.384138",
+  "version": "v1.0.0-20260804",
+  "generated_at": "2026-08-04T08:03:21.574807",
   "confirmed_at": null,
   "project": {
     "name": "textream-cn-master",
@@ -12,8 +12,8 @@
     ".": {
       "purpose": "root",
       "description": "项目根目录",
-      "file_count": 115,
-      "loc": 31773,
+      "file_count": 118,
+      "loc": 37796,
       "allowed_dependencies": [
         "*"
       ],
@@ -21,7 +21,7 @@
     },
     "Textream": {
       "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "description": "项目构建脚本，用于编译和打包Textream项目",
       "file_count": 1,
       "loc": 87,
       "allowed_dependencies": [],
@@ -29,15 +29,15 @@
     },
     "Textream/Textream": {
       "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "description": "Textream 应用的核心业务模块，涵盖代理管理、服务器通信、文本编辑、语音识别、语言检测及国际化支持等关键功能。",
       "file_count": 20,
-      "loc": 10479,
+      "loc": 10639,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
     "Textream/Textream.xcodeproj": {
       "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "description": "Xcode项目配置文件，管理源码引用、构建设置与目标依赖关系。",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -45,7 +45,7 @@
     },
     "Textream/Textream.xcodeproj/project.xcworkspace": {
       "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "description": "Xcode工作区目录，存储项目引用与构建配置",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -53,7 +53,7 @@
     },
     "Textream/Textream.xcodeproj/project.xcworkspace/xcshareddata": {
       "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "description": "Xcode工作区共享配置数据，用于团队统一的构建设置",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -61,7 +61,7 @@
     },
     "Textream/Textream.xcodeproj/project.xcworkspace/xcshareddata/swiftpm": {
       "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "description": "存储 Swift Package Manager 的共享缓存与依赖解析数据",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -69,7 +69,7 @@
     },
     "Textream/Textream.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/configuration": {
       "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "description": "Swift Package Manager 配置目录，存储包镜像与注册表设置",
       "file_count": 0,
       "loc": 0,
       "allowed_dependencies": [],
@@ -111,7 +111,7 @@
       "purpose": "unknown",
       "description": "自动识别: unknown",
       "file_count": 5,
-      "loc": 584,
+      "loc": 615,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -159,7 +159,7 @@
       "purpose": "unknown",
       "description": "自动识别: unknown",
       "file_count": 4,
-      "loc": 782,
+      "loc": 846,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -199,7 +199,7 @@
       "purpose": "unknown",
       "description": "自动识别: unknown",
       "file_count": 4,
-      "loc": 955,
+      "loc": 1029,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },
@@ -229,7 +229,7 @@
     },
     "agent/web-console-dist": {
       "purpose": "unknown",
-      "description": "自动识别: unknown",
+      "description": "提供 Web 控制台的前端静态资源，用于代理的管理与监控界面",
       "file_count": 1,
       "loc": 17,
       "allowed_dependencies": [],
@@ -238,8 +238,8 @@
     "agent/web-console-dist/assets": {
       "purpose": "unknown",
       "description": "自动识别: unknown",
-      "file_count": 2,
-      "loc": 5702,
+      "file_count": 4,
+      "loc": 11308,
       "allowed_dependencies": [],
       "forbidden_dependencies": []
     },

@@ -28,11 +28,19 @@ const NAV_ITEMS: { key: View; label: string; icon: string }[] = [
   { key: 'knowledge', label: '知识库', icon: '⊡' },
 ];
 
-function loadFromStorage<T>(key: string, fallback: T): T {
+function loadFromStorage<T>(key: string, fallback: T, useSession = false): T {
   try {
-    const val = localStorage.getItem(key);
+    const storage = useSession ? sessionStorage : localStorage;
+    const val = storage.getItem(key);
     return val ? JSON.parse(val) : fallback;
   } catch { return fallback; }
+}
+
+function saveToStorage(key: string, value: unknown, useSession = false): void {
+  try {
+    const storage = useSession ? sessionStorage : localStorage;
+    storage.setItem(key, JSON.stringify(value));
+  } catch { /* quota exceeded, ignore */ }
 }
 
 export function App() {
@@ -46,19 +54,28 @@ export function App() {
   const [sidebarWidth, setSidebarWidth] = useState(224);
   const [rightWidth, setRightWidth] = useState(280);
   const [config, setConfig] = useState<ServerConfig>(() => {
+    // 非敏感配置持久化到 localStorage
     const saved = localStorage.getItem('textream_config');
+    // API Key 放 sessionStorage（关闭页面即清除）
+    const savedApiKey = sessionStorage.getItem('textream_llm_api_key') || '';
+    const savedOneApiKey = sessionStorage.getItem('textream_one_api_key') || '';
     if (saved) {
-      try { return JSON.parse(saved); } catch { /* ignore */ }
+      try {
+        const parsed = JSON.parse(saved);
+        parsed.llmApiKey = savedApiKey || parsed.llmApiKey || '';
+        parsed.oneApiKey = savedOneApiKey || parsed.oneApiKey || '';
+        return parsed;
+      } catch { /* ignore */ }
     }
     return {
       url: 'http://localhost:9123',
       llmProvider: 'siliconflow',
       llmBaseUrl: 'https://api.siliconflow.cn/v1',
-      llmApiKey: '',
+      llmApiKey: savedApiKey || '',
       llmModel: 'Qwen/Qwen2.5-72B-Instruct',
       useOneMemory: false,
       oneRoot: '/Users/mac/Desktop/oh-agent-panel',
-      oneApiKey: '',
+      oneApiKey: savedOneApiKey || '',
     };
   });
 
@@ -97,7 +114,11 @@ export function App() {
 
   const handleSaveConfig = async (newConfig: ServerConfig) => {
     setConfig(newConfig);
-    localStorage.setItem('textream_config', JSON.stringify(newConfig));
+    // 非敏感配置持久化到 localStorage，API Key 放 sessionStorage（关闭页面即清除）
+    const { llmApiKey, oneApiKey, ...safeConfig } = newConfig;
+    localStorage.setItem('textream_config', JSON.stringify(safeConfig));
+    saveToStorage('textream_llm_api_key', llmApiKey, true);
+    saveToStorage('textream_one_api_key', oneApiKey, true);
     setShowSettings(false);
     await checkHealth();
     try {

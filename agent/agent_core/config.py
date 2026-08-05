@@ -25,19 +25,19 @@ KNOWLEDGE_ENABLED = os.environ.get("KNOWLEDGE_ENABLED", "true").lower() == "true
 
 
 class Settings:
-    """配置类"""
+    """配置类（实例属性，避免隐式全局可变状态）"""
 
-    data_dir: Path = DATA_DIR
-    llm_provider: str = LLM_PROVIDER
-    llm_model: str = LLM_MODEL
-    agent_port: int = AGENT_PORT
-    memory_enabled: bool = MEMORY_ENABLED
-    knowledge_enabled: bool = KNOWLEDGE_ENABLED
+    def __init__(self):
+        self.data_dir: Path = DATA_DIR
+        self.llm_provider: str = LLM_PROVIDER
+        self.llm_model: str = LLM_MODEL
+        self.agent_port: int = AGENT_PORT
+        self.memory_enabled: bool = MEMORY_ENABLED
+        self.knowledge_enabled: bool = KNOWLEDGE_ENABLED
 
-    @classmethod
-    def get(cls, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: Any = None) -> Any:
         """获取配置项"""
-        return getattr(cls, key, default)
+        return getattr(self, key, default)
 
 
 def get_settings() -> Settings:
