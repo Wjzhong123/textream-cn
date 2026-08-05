@@ -1,28 +1,37 @@
 """
 弹幕截图 + OCR 识别模块
 
+OCR 引擎：
+  - RapidOCR（主力，基于 ONNX Runtime）— 中文识别精度远超 Tesseract，跳过文本检测 (~0.4s/帧)
+  - 旧版 Tesseract 已弃用（弹幕彩色小字场景精度差）
+  - 安装: pip install rapidocr onnxruntime
+
 双引擎架构：
   1. DirectorDanmakuCapture（主力，默认）— 通过 Textream.app 的 DirectorServer 获取截图
      ✅ 屏幕权限归 Textream.app，权限弹窗显示"Textream"而非"Python"
-  2. DanmakuCapture（fallback）— 直接使用 PIL.ImageGrab + pytesseract
+  2. DanmakuCapture（fallback）— 直接使用 PIL.ImageGrab + RapidOCR
 
 流程：
-  Textream.app (Swift) → DirectorServer REST API → 本模块 HTTP 获取截图 → pytesseract OCR
+  Textream.app (Swift) → DirectorServer REST API → 本模块 HTTP 获取截图 → RapidOCR
 """
 
 import asyncio
 import base64
 import logging
 import os
+import re
 import time
 from typing import Any
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 import numpy as np
-import pytesseract
 import cv2
 from PIL import Image
+
+# 换用 RapidOCR（基于 ONNX Runtime，中文识别精度远超 Tesseract）
+# 安装: pip install rapidocr onnxruntime
+from rapidocr import RapidOCR
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +91,11 @@ class DirectorDanmakuCapture:
         self.capture_interval = capture_interval
         self.lang = lang
         self._director_available: bool | None = None  # None = 未检测
+
+        # RapidOCR 引擎（基于 ONNX Runtime，中文识别精度远超 Tesseract）
+        # 弹幕区域是纯文本区域，跳过文本检测 (`use_det=False`) 只做识别，速度翻倍。
+        self._rapid_ocr = RapidOCR()
+        self._rapid_text_score = 0.5  # 低于此置信度的文本丢弃
 
         logger.info(f"[DirectorDanmakuCapture] 初始化 (DirectorServer={self.base_url}, interval={capture_interval}s)")
 
@@ -233,27 +247,96 @@ class DirectorDanmakuCapture:
             return result
 
     def _ocr_image(self, image_data: bytes) -> list[str]:
-        """对 JPEG 数据进行 OCR 识别"""
-        # 1. 解码 JPEG → PIL Image → numpy
+        """
+        对 JPEG 数据进行 OCR 识别（RapidOCR 引擎，行聚类 + 单行识别 + 弹幕拼接）
+
+        设计说明：
+        - use_det=True（完整检测）能完美识别多行弹幕，但 1.8s/帧太慢
+        - use_det=False 假设单行，对多行 region 识别不准、换行会拆开
+        - 方案：水平投影拆行（~35ms/行）→ 按行距聚类成弹幕 → 每行单行识别
+          → 同一弹幕的多行拼接成一条完整文本（长评论不拆开）
+        """
+        # 1. 解码 JPEG → numpy (RGB → BGR, RapidOCR 需要 BGR 格式)
         img = Image.open(__import__("io").BytesIO(image_data))
-        frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2GRAY)
+        frame = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-        # 2. 图像预处理：
-        #    - OTSU 自适应阈值：弹幕常有彩字/描边/半透明背景，固定阈值(150)容易断字，
-        #      OTSU 按全局像素分布自动找阈值，对亮度不均的画面鲁棒得多。
-        #    - 轻量中值去噪：消除 OCR 噪声点，不放大图像（保住速度）。
-        _, thresh = cv2.threshold(frame, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        thresh = cv2.medianBlur(thresh, 3)
+        # 2. 水平投影拆行：找到每一行文本的 y 区间
+        #    弹幕列表是深色背景 + 亮色文字 → 检测亮像素比例找文本行
+        h, w = frame.shape[:2]
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        bright_per_row = (gray > 180).sum(axis=1)  # 每行亮像素数
 
-        # 3. OCR
-        text = pytesseract.image_to_string(thresh, config="--psm 6", lang=self.lang)
+        # 双条件：绝对像素数 >= 8（短文本"跑了"在宽区域占比 <2%，
+        # 比例阈值会漏掉），或占比 >= 0.5%（防止宽区域噪声行）
+        def _is_text_row(y: int) -> bool:
+            return bright_per_row[y] >= 8 or bright_per_row[y] >= w * 0.005
 
-        # 4. 清洗、多帧确认与去重
-        lines = [line.strip() for line in text.split("\n") if line.strip()]
+        in_text = False
+        row_regions = []  # [(y_start, y_end), ...] 按 y 排序
+        region_start = 0
+        for y in range(h):
+            if _is_text_row(y) and not in_text:
+                in_text = True
+                region_start = y
+            elif not _is_text_row(y) and in_text:
+                in_text = False
+                if y - region_start > 5:
+                    row_regions.append((region_start, y))
+        if in_text and h - region_start > 5:
+            row_regions.append((region_start, h))
+
+        # 3. 按行距聚类：相邻行 gap 小 → 同一弹幕的换行；gap 大 → 不同弹幕
+        #    截图实测：弹幕行高 ~30px，换行 gap 4-8px，不同弹幕 gap > 50px
+        LINE_MERGE_GAP = 20  # gap < 20px 视为同一弹幕的换行
+        groups = []  # [[(y0,y1), ...], ...]
+        cur: list = []
+        for r in row_regions:
+            if cur and r[0] - cur[-1][1] > LINE_MERGE_GAP:
+                groups.append(cur)
+                cur = []
+            cur.append(r)
+        if cur:
+            groups.append(cur)
+
+        # 4. 每组弹幕：每行单独用 use_det=False 识别（单行假设 → 准确），
+        #    多行结果用空格拼接成一条完整弹幕（长评论换行不拆开）
+        MIN_REC_HEIGHT = 32  # RapidOCR 识别模型最小高度
+        lines = []
+        for group in groups:
+            group_texts = []
+            for y_start, y_end in group:
+                region = frame[y_start:y_end, :, :]
+                if region.shape[0] < MIN_REC_HEIGHT:
+                    pad_top = (MIN_REC_HEIGHT - region.shape[0]) // 2
+                    pad_bottom = MIN_REC_HEIGHT - region.shape[0] - pad_top
+                    region = cv2.copyMakeBorder(region, pad_top, pad_bottom, 0, 0,
+                                                cv2.BORDER_CONSTANT, value=(255, 255, 255))
+                try:
+                    result = self._rapid_ocr(region, use_det=False, use_cls=True, use_rec=True)
+                    if hasattr(result, "txts") and result.txts:
+                        for text in result.txts:
+                            if isinstance(text, str):
+                                for line in text.split("\n"):
+                                    line = line.strip()
+                                    if line:
+                                        group_texts.append(line)
+                except Exception as e:
+                    logger.debug(f"[DirectorDanmakuCapture] 行识别跳过 ({y_start}-{y_end}): {e}")
+                    continue
+            if group_texts:
+                # 清理弹幕列表左侧的行号序号（如 "17①"、"34⑩"），
+                # 这是应用 UI 的行号，不是弹幕内容
+                joined = " ".join(group_texts)
+                joined = re.sub(r'^\d{1,3}[①-⑩]?\s*', '', joined)
+                if joined:
+                    lines.append(joined)
+
+        # 5. 清洗、多帧确认与去重
         new_lines = []
         now = time.time()
 
-        # 4.0 超时未确认的待确认弹幕 → 直接推送（避免弹幕太快滚过导致永久丢失）
+        # 5.0 超时未确认的待确认弹幕 → 直接推送（避免弹幕太快滚过导致永久丢失）
         for core, info in list(self._pending.items()):
             if now - info["first_seen"] > self._pending_confirm_timeout:
                 del self._pending[core]
@@ -406,7 +489,22 @@ class DirectorDanmakuCapture:
         if re.search(r'等\d+人', text) or re.search(r'来了$', text):
             return False
 
-        return True
+        # 过滤送礼/互动消息
+        # 典型：送人气票、送玫瑰、送表情、送xxx
+        if re.search(r'^送', text):
+            return False
+        # 送礼消息常见形态（OCR 合并后）："名字:送出了 粉丝团 × 1"
+        # 注意名字前缀可能让 ^送 匹配不到，必须全文搜索关键词
+        if re.search(r'送出了', text):
+            return False
+        # 礼物倍数：全角 × 或半角 x 加数字（"× 1"、"x2"）
+        if re.search(r'[×xX]\s*\d', text):
+            return False
+        # 纯礼物名称：玫瑰、人气票、荧光棒、小心心、粉丝牌等
+        gift_keywords = ['人气票', '荧光棒', '小心心', '粉丝牌', '大啤酒', '亲密度', '粉丝团', '玫瑰', '表情', '穿云箭', '火箭', '嘉年华']
+        for kw in gift_keywords:
+            if kw in text:
+                return False
 
         return True
 
